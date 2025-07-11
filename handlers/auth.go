@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"file_manager/utils"
 	"fmt"
+	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"net/http"
 )
@@ -32,12 +35,24 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	hashedPassword := utils.Hash256([]byte(input.Password), salt)
 
-	if _, err := handler.Models.User.CreateUserInstance(input.Username, string(salt), string(hashedPassword[:])); err != nil {
-		http.Error(w, fmt.Errorf("ERROR creating user instance: %s", err).Error(), http.StatusBadRequest)
+	encodedHash := hex.EncodeToString(hashedPassword[:])
+	encodedSalt := hex.EncodeToString(salt)
+
+	
+	if _, err = handler.Models.User.FetchUserByUsername(input.Username); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			if _, err := handler.Models.User.CreateUserInstance(input.Username, encodedSalt, encodedHash); err != nil {
+				http.Error(w, fmt.Errorf("creating user instance: %s", err).Error(), http.StatusBadRequest)
+				return
+			}
+
+			return
+		}
+		http.Error(w, fmt.Errorf("fetch user: %s", err).Error(), http.StatusBadRequest)
 		return
 	}
 
-	w.Write([]byte("user created successfully"))
+	http.Error(w, "this username is taken already", http.StatusBadRequest)
 }
 
 func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -63,12 +78,23 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isPasswordTrue := utils.ValidateHash([]byte(input.RawPassword), []byte(user.HashedPassword), []byte(user.Salt))
-	if !isPasswordTrue {
-		http.Error(w, fmt.Errorf("ERROR validating password: %s", err).Error(), http.StatusBadRequest)
+	decodedHash, err := hex.DecodeString(user.HashedPassword)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
+	decodedSalt, err := hex.DecodeString(user.Salt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !utils.ValidateHash([]byte(input.RawPassword), decodedHash, decodedSalt) {
+		http.Error(w, "invalid password", http.StatusBadRequest)
+		return
+	}
+
 	//token, err := handler.PasetoMaker.CreateToken(input.Username, 24*time.Hour)
 	//if err != nil {
 	//	http.Error(w, fmt.Errorf("ERROR creating token: %s", err).Error(), http.StatusBadRequest)
