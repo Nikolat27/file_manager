@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"file_manager/database"
+	"file_manager/database/models"
 	"file_manager/handlers"
 	"file_manager/webserver"
 	"fmt"
@@ -25,7 +26,9 @@ func main() {
 		panic(fmt.Errorf("ERROR initializing database client: %s", err))
 	}
 
-	handler, err := handlers.New(db)
+	newModels := models.New(db)
+
+	handler, err := handlers.New(newModels)
 	if err != nil {
 		panic(fmt.Errorf("ERROR creating the handler: %s", err))
 	}

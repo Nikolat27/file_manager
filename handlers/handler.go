@@ -1,16 +1,16 @@
 package handlers
 
 import (
-	"file_manager/database"
+	"file_manager/database/models"
 	"file_manager/token"
 )
 
 type Handler struct {
 	PasetoMaker *token.PasetoMaker
-	DB          *database.DB
+	Models      *models.Models
 }
 
-func New(db *database.DB) (*Handler, error) {
+func New(models *models.Models) (*Handler, error) {
 	paseto, err := token.New()
 	if err != nil {
 		return nil, err
@@ -18,7 +18,7 @@ func New(db *database.DB) (*Handler, error) {
 
 	var handler = &Handler{
 		PasetoMaker: paseto,
-		DB:          db,
+		Models:      models,
 	}
 
 	return handler, nil
