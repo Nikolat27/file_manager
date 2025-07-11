@@ -6,14 +6,31 @@ import (
 	"net/http"
 )
 
+//func CheckAuth(handler *handlers.Handler, httpHandler func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
+//	return func(w http.ResponseWriter, r *http.Request) {
+//		value, err := getToken(w, r, "authToken")
+//		if err != nil {
+//			return
+//		}
+//
+//		if _, err := handler.PasetoMaker.VerifyToken(value); err != nil {
+//			http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
+//			return
+//		}
+//
+//		httpHandler(w, r)
+//	}
+//}
+
 func CheckAuth(handler *handlers.Handler, httpHandler func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		value, err := getToken(w, r, "authToken")
-		if err != nil {
+		token := r.Header.Get("Authorization")
+		if token == "" {
+			http.Error(w, "Unauthorized: token is missing", http.StatusUnauthorized)
 			return
 		}
 
-		if _, err := handler.PasetoMaker.VerifyToken(value); err != nil {
+		if _, err := handler.PasetoMaker.VerifyToken(token); err != nil {
 			http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
 			return
 		}

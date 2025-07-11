@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"net/http"
+	"time"
 )
 
 func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +39,6 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	encodedHash := hex.EncodeToString(hashedPassword[:])
 	encodedSalt := hex.EncodeToString(salt)
 
-	
 	if _, err = handler.Models.User.FetchUserByUsername(input.Username); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			if _, err := handler.Models.User.CreateUserInstance(input.Username, encodedSalt, encodedHash); err != nil {
@@ -95,17 +95,11 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//token, err := handler.PasetoMaker.CreateToken(input.Username, 24*time.Hour)
-	//if err != nil {
-	//	http.Error(w, fmt.Errorf("ERROR creating token: %s", err).Error(), http.StatusBadRequest)
-	//	return
-	//}
-	//
-	//_, err = handler.PasetoMaker.VerifyToken(token)
-	//if err != nil {
-	//	http.Error(w, fmt.Errorf("ERROR verifying token: %s", err).Error(), http.StatusBadRequest)
-	//	return
-	//}
+	token, err := handler.PasetoMaker.CreateToken(input.Username, 24*time.Hour)
+	if err != nil {
+		http.Error(w, fmt.Errorf("ERROR creating token: %s", err).Error(), http.StatusBadRequest)
+		return
+	}
 
-	w.Write([]byte("token is valid"))
+	w.Write([]byte(token))
 }
