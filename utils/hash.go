@@ -15,8 +15,9 @@ func Hash256(plainText, salt []byte) [Size]byte {
 	return sha256.Sum256(newPassword)
 }
 
-func ValidateHash(plainText, hashedText []byte) bool {
-	currentHash := sha256.Sum256(plainText)
+func ValidateHash(plainText, hashedText, salt []byte) bool {
+	newText := append(plainText, salt...)
+	currentHash := sha256.Sum256(newText)
 
 	return string(currentHash[:]) == string(hashedText)
 }
