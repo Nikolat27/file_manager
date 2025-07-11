@@ -1,12 +1,14 @@
 package models
 
-import "file_manager/database"
+import (
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 type Models struct {
 	User UserModel
 }
 
-func New(db *database.DB) *Models {
+func New(db *mongo.Database) *Models {
 	return &Models{
 		User: UserModel{DB: db},
 	}
