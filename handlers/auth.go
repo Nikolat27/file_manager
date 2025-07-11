@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -33,12 +32,18 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	hashedPassword := utils.Hash256([]byte(input.Password), salt)
 
-	fmt.Println(hashedPassword)
+	if _, err := handler.Models.User.CreateUserInstance(input.Username, string(salt), string(hashedPassword[:])); err != nil {
+		http.Error(w, fmt.Errorf("ERROR creating user instance: %s", err).Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Write([]byte("user created successfully"))
 }
 
 func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Username string `json:"username"`
+		Username    string `json:"username"`
+		RawPassword string `json:"password"`
 	}
 
 	body, err := io.ReadAll(io.LimitReader(r.Body, 10000))
@@ -52,16 +57,29 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := handler.PasetoMaker.CreateToken(input.Username, 24*time.Hour)
+	user, err := handler.Models.User.FetchUserByUsername(input.Username)
 	if err != nil {
-		fmt.Println(err)
+		http.Error(w, fmt.Errorf("ERROR creating token: %s", err).Error(), http.StatusBadRequest)
 		return
 	}
 
-	payload, err := handler.PasetoMaker.VerifyToken(token)
-	if err != nil {
-		fmt.Println(err)
+	isPasswordTrue := utils.ValidateHash([]byte(input.RawPassword), []byte(user.HashedPassword), []byte(user.Salt))
+	if !isPasswordTrue {
+		http.Error(w, fmt.Errorf("ERROR validating password: %s", err).Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Println(payload.Valid())
+	
+	//token, err := handler.PasetoMaker.CreateToken(input.Username, 24*time.Hour)
+	//if err != nil {
+	//	http.Error(w, fmt.Errorf("ERROR creating token: %s", err).Error(), http.StatusBadRequest)
+	//	return
+	//}
+	//
+	//_, err = handler.PasetoMaker.VerifyToken(token)
+	//if err != nil {
+	//	http.Error(w, fmt.Errorf("ERROR verifying token: %s", err).Error(), http.StatusBadRequest)
+	//	return
+	//}
+
+	w.Write([]byte("token is valid"))
 }
