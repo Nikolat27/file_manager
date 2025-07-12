@@ -22,7 +22,7 @@ func ValidateHash(plainText, hashedText, salt []byte) bool {
 	return string(currentHash[:]) == string(hashedText)
 }
 
-func GetSalt() ([]byte, error) {
+func GenerateSalt() ([]byte, error) {
 	bytes := make([]byte, SaltLength)
 	if _, err := rand.Read(bytes); err != nil {
 		return nil, err
