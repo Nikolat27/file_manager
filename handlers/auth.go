@@ -28,7 +28,7 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	salt, err := utils.GetSalt()
+	salt, err := utils.GenerateSalt()
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR create salt: %s", err).Error(), http.StatusBadRequest)
 		return
@@ -95,7 +95,7 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := handler.PasetoMaker.CreateToken(input.Username, 24*time.Hour)
+	token, err := handler.PasetoMaker.CreateToken(user.Username, user.Id.Hex(), 24*time.Hour)
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR creating token: %s", err).Error(), http.StatusBadRequest)
 		return
