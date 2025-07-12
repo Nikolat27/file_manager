@@ -9,11 +9,12 @@ import (
 type Payload struct {
 	ID        uuid.UUID `json:"id"`
 	Username  string    `json:"username"`
+	UserId    string    `json:"user_id"`
 	CreatedAt time.Time `json:"created_at"`
 	ExpiryAt  time.Time `json:"expiry_at"`
 }
 
-func NewPayload(username string, duration time.Duration) (*Payload, error) {
+func NewPayload(username, userId string, duration time.Duration) (*Payload, error) {
 	tokenId, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
@@ -22,6 +23,7 @@ func NewPayload(username string, duration time.Duration) (*Payload, error) {
 	payload := &Payload{
 		ID:        tokenId,
 		Username:  username,
+		UserId:    userId,
 		CreatedAt: time.Now(),
 		ExpiryAt:  time.Now().Add(duration),
 	}
