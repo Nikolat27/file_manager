@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"file_manager/utils"
+	"fmt"
 	"github.com/google/uuid"
 	"net/http"
 	"strconv"
@@ -81,6 +83,14 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		hashedPassword = utils.Hash256([]byte(rawPassword), salt)
 	}
 
-	handler.Models.File.CreateFileInstance(userId, newFileName, address, hashedPassword[:], salt, approvable, maxDownloads, expireAt)
+	encodedSalt := hex.EncodeToString(salt)
+	encodedPasswordHash := hex.EncodeToString(hashedPassword[:])
 
+	_, err = handler.Models.File.CreateFileInstance(userId, newFileName, address, encodedSalt, encodedPasswordHash, approvable, maxDownloads, expireAt)
+	if err != nil {
+		http.Error(w, fmt.Errorf("ERROR creating file instance: %s", err).Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Write([]byte("file created successfully"))
 }
