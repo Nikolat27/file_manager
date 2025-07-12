@@ -34,7 +34,7 @@ func CheckAuth(handler *handlers.Handler, httpHandler func(w http.ResponseWriter
 			http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
 			return
 		}
-
+		
 		httpHandler(w, r)
 	}
 }
