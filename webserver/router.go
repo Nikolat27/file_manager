@@ -25,4 +25,7 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 	// Auth
 	router.Router.HandlerFunc("POST", "/api/auth/register", handler.Register)
 	router.Router.HandlerFunc("POST", "/api/auth/login", handler.Login)
+
+	// File
+	router.Router.HandlerFunc("POST", "/api/file/create", handler.CreateFile)
 }
