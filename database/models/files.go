@@ -160,3 +160,34 @@ func (file *FileModel) RenameFileInstance(id primitive.ObjectID, newName []byte)
 
 	return nil
 }
+
+func (file *FileModel) IsFileExpired(id primitive.ObjectID) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	projection := bson.M{
+		"expire_at": 1,
+	}
+
+	fileOptions := options.FindOne()
+	fileOptions.SetProjection(projection)
+
+	var fileInstance File
+	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
+		return false, err
+	}
+
+	if fileInstance.ExpireAt.IsZero() {
+		return false, nil
+	}
+
+	if time.Now().After(fileInstance.ExpireAt) {
+		return true, nil
+	}
+
+	return false, nil
+}
