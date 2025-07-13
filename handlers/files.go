@@ -67,7 +67,6 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(payload)
 	userId, err := utils.ConvertStringToObjectID(payload.UserId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -118,6 +117,6 @@ func (handler *Handler) GetUserFiles(w http.ResponseWriter, r *http.Request) {
 	
 	file, err := handler.Models.File.GetUsersFileInstance(userId, pageNumber, pageLimit)
 
-	data, err := json.Marshal(file)
+	data, err := json.MarshalIndent(file, "", "	")
 	w.Write(data)
 }
