@@ -127,6 +127,36 @@ func (file *FileModel) GetFileAddress(id primitive.ObjectID) ([]byte, error) {
 	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&deletedFile); err != nil {
 		return nil, err
 	}
-	
+
 	return []byte(deletedFile.Address), nil
+}
+
+func (file *FileModel) RenameFileInstance(id primitive.ObjectID, newName []byte) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"name": string(newName),
+		},
+	}
+
+	updateResult, err := file.DB.Collection(FileCollectionName).UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if updateResult.MatchedCount == 0 {
+		return errors.New("file not found")
+	}
+
+	if updateResult.ModifiedCount == 0 {
+		return errors.New("no change detected. Please enter a different name")
+	}
+
+	return nil
 }

@@ -148,3 +148,38 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 
 	w.Write([]byte("file deleted successfully"))
 }
+
+func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
+	fileId, err := utils.ReadFileId(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fileObjectId, err := utils.ConvertStringToObjectID(fileId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var input struct {
+		Name string `json:"new_name"`
+	}
+
+	if err := utils.ReadJson(r, 1000, &input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if input.Name == "" {
+		http.Error(w, "'new_name' parameter is missing", http.StatusBadRequest)
+		return
+	}
+
+	if err := handler.Models.File.RenameFileInstance(fileObjectId, []byte(input.Name)); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Write([]byte("file`s name changed successfully"))
+}
