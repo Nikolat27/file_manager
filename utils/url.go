@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"errors"
+	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strconv"
 )
@@ -27,4 +29,14 @@ func GetPaginationParams(r *http.Request) (int64, int64, error) {
 	}
 
 	return intPage, intLimit, nil
+}
+
+func ReadFileId(r *http.Request) (string, error) {
+	params := httprouter.ParamsFromContext(r.Context())
+	fileId := params.ByName("file_id")
+	if fileId == "" {
+		return "", errors.New("file id is missing")
+	}
+
+	return fileId, nil
 }
