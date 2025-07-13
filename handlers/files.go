@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"file_manager/utils"
 	"fmt"
 	"github.com/google/uuid"
@@ -66,6 +67,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println(payload)
 	userId, err := utils.ConvertStringToObjectID(payload.UserId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -93,4 +95,25 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write([]byte("file created successfully"))
+}
+
+func (handler *Handler) GetUserFiles(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
+		return
+	}
+
+	userId, err := utils.ConvertStringToObjectID(payload.UserId)
+	if err != nil {
+		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
+		return
+	}
+
+	page := int64(1)
+	pageLimit := int64(2)
+	file, err := handler.Models.File.GetUsersFileInstance(userId, page, pageLimit)
+
+	data, err := json.Marshal(file)
+	w.Write(data)
 }

@@ -2,8 +2,10 @@ package models
 
 import (
 	"context"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -51,4 +53,36 @@ func (file *FileModel) CreateFileInstance(ownerId primitive.ObjectID,
 	}
 
 	return id.InsertedID.(primitive.ObjectID), nil
+}
+
+func (file *FileModel) GetUsersFileInstance(ownerId primitive.ObjectID, page, pageSize int64) ([]File, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"owner_id": ownerId,
+	}
+
+	projection := bson.M{
+		"owner_id":        0,
+		"hashed_password": 0,
+		"salt":            0,
+	}
+
+	findOptions := options.Find()
+	findOptions.SetProjection(projection)
+	findOptions.SetSkip((page - 1) * pageSize)
+	findOptions.SetLimit(pageSize)
+
+	cursor, err := file.DB.Collection(FileCollectionName).Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	var files []File
+	if err := cursor.All(ctx, &files); err != nil {
+		return nil, err
+	}
+
+	return files, nil
 }
