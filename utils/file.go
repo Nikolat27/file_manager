@@ -17,7 +17,7 @@ const (
 
 var allowedTypes = []string{"image/jpeg", "image/png", "application/zip"}
 
-func UploadFile(key, userId string, r *http.Request) (string, error) {
+func UploadFileToDisk(key, userId string, r *http.Request) (string, error) {
 	if err := r.ParseMultipartForm(MaxMemoryBytes << 20); err != nil {
 		return "", err
 	}
@@ -83,6 +83,15 @@ func validateFileFormat(file multipart.File) error {
 	} else {
 		return errors.New("cannot seek file")
 	}
-	
+
+	return nil
+}
+
+func DeleteFileFromDisk(address []byte) error {
+	err := os.Remove(string(address))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -61,7 +61,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		newFileName = uuid.New().String()
 	}
 
-	address, err := utils.UploadFile("file", payload.UserId, r)
+	address, err := utils.UploadFileToDisk("file", payload.UserId, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -96,7 +96,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("file created successfully"))
 }
 
-func (handler *Handler) GetUserFiles(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
@@ -108,15 +108,43 @@ func (handler *Handler) GetUserFiles(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
 		return
 	}
-	
+
 	userId, err := utils.ConvertStringToObjectID(payload.UserId)
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
 		return
 	}
-	
-	file, err := handler.Models.File.GetUsersFileInstance(userId, pageNumber, pageLimit)
+
+	file, err := handler.Models.File.GetFilesInstances(userId, pageNumber, pageLimit)
 
 	data, err := json.MarshalIndent(file, "", "	")
 	w.Write(data)
+}
+
+func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
+	fileId, err := utils.ReadFileId(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fileObjectId, err := utils.ConvertStringToObjectID(fileId)
+
+	address, err := handler.Models.File.GetFileAddress(fileObjectId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := utils.DeleteFileFromDisk(address); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := handler.Models.File.DeleteFileInstance(fileObjectId); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Write([]byte("file deleted successfully"))
 }

@@ -28,5 +28,6 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 
 	// File
 	router.Router.HandlerFunc("POST", "/api/file/create", handler.CreateFile)
-	router.Router.HandlerFunc("GET", "/api/file/get", handler.GetUserFiles)
+	router.Router.HandlerFunc("GET", "/api/file/get", handler.GetFiles)
+	router.Router.HandlerFunc("DELETE", "/api/file/delete/:file_id", handler.DeleteFile)
 }

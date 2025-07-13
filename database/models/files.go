@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -55,7 +56,7 @@ func (file *FileModel) CreateFileInstance(ownerId primitive.ObjectID,
 	return id.InsertedID.(primitive.ObjectID), nil
 }
 
-func (file *FileModel) GetUsersFileInstance(ownerId primitive.ObjectID, page, pageSize int64) ([]File, error) {
+func (file *FileModel) GetFilesInstances(ownerId primitive.ObjectID, page, pageSize int64) ([]File, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -85,4 +86,47 @@ func (file *FileModel) GetUsersFileInstance(ownerId primitive.ObjectID, page, pa
 	}
 
 	return files, nil
+}
+
+func (file *FileModel) DeleteFileInstance(id primitive.ObjectID) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	deletedCount, err := file.DB.Collection(FileCollectionName).DeleteOne(ctx, filter)
+	if err != nil {
+		return err
+	}
+
+	if deletedCount.DeletedCount == 0 {
+		return errors.New("file with this id does not exist")
+	}
+
+	return nil
+}
+
+func (file *FileModel) GetFileAddress(id primitive.ObjectID) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	projection := bson.M{
+		"address": 1,
+	}
+
+	fileOptions := options.FindOne()
+	fileOptions.SetProjection(projection)
+
+	var deletedFile File
+	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&deletedFile); err != nil {
+		return nil, err
+	}
+	
+	return []byte(deletedFile.Address), nil
 }
