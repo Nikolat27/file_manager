@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"crypto/rand"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,7 +33,10 @@ func UploadFile(key, userId string, r *http.Request) (string, error) {
 		return "", err
 	}
 
-	dst, err := os.Create(uploadDir + handler.Filename)
+	randomStr := rand.Text()
+	fileName := randomStr + handler.Filename
+
+	dst, err := os.Create(uploadDir + fileName)
 	if err != nil {
 		return "", err
 	}
@@ -41,7 +45,7 @@ func UploadFile(key, userId string, r *http.Request) (string, error) {
 			fmt.Printf(err.Error())
 		}
 	}()
-	
+
 	if _, err = io.Copy(dst, file); err != nil {
 		return "", err
 	}
