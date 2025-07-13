@@ -3,6 +3,7 @@ package webserver
 import (
 	"file_manager/handlers"
 	"github.com/julienschmidt/httprouter"
+	"net/http"
 )
 
 type Router struct {
@@ -22,6 +23,13 @@ func NewRouter(handler *handlers.Handler) *Router {
 }
 
 func (router *Router) initRoutes(handler *handlers.Handler) {
+	// Static Files
+	dir := http.Dir("./")
+	fileServer := http.FileServer(dir)
+	staticFilesHandler := http.StripPrefix("/static/", fileServer)
+
+	router.Router.Handler("GET", "/static/*filepath", staticFilesHandler)
+
 	// Auth
 	router.Router.HandlerFunc("POST", "/api/auth/register", handler.Register)
 	router.Router.HandlerFunc("POST", "/api/auth/login", handler.Login)
