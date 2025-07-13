@@ -104,15 +104,19 @@ func (handler *Handler) GetUserFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pageNumber, pageLimit, err := utils.GetPaginationParams(r)
+	if err != nil {
+		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
+		return
+	}
+	
 	userId, err := utils.ConvertStringToObjectID(payload.UserId)
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
 		return
 	}
-
-	page := int64(1)
-	pageLimit := int64(2)
-	file, err := handler.Models.File.GetUsersFileInstance(userId, page, pageLimit)
+	
+	file, err := handler.Models.File.GetUsersFileInstance(userId, pageNumber, pageLimit)
 
 	data, err := json.Marshal(file)
 	w.Write(data)
