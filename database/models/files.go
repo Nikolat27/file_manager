@@ -20,6 +20,7 @@ type File struct {
 	Name           string             `json:"name" bson:"name"`
 	Address        string             `json:"address" bson:"address"`
 	Approvable     bool               `json:"approvable" bson:"approvable"`
+	ShortUrl       string             `json:"short_url" bson:"short_url"`
 	Salt           string             `json:"salt" bson:"salt"`
 	HashedPassword string             `json:"hashed_password" bson:"hashed_password"`
 	MaxDownloads   uint64             `json:"max_downloads" bson:"max_downloads"`
@@ -30,7 +31,7 @@ type File struct {
 const FileCollectionName = "files"
 
 func (file *FileModel) CreateFileInstance(ownerId primitive.ObjectID,
-	fileName, address, salt, hashedPassword string, approvable bool,
+	fileName, address, shortUrl, salt, hashedPassword string, approvable bool,
 	maxDownloads uint64, expireAt time.Time) (primitive.ObjectID, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -40,6 +41,7 @@ func (file *FileModel) CreateFileInstance(ownerId primitive.ObjectID,
 		OwnerId:        ownerId,
 		Name:           fileName,
 		Address:        address,
+		ShortUrl:       shortUrl,
 		Salt:           salt,
 		HashedPassword: hashedPassword,
 		Approvable:     approvable,
@@ -190,4 +192,40 @@ func (file *FileModel) IsFileExpired(id primitive.ObjectID) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (file *FileModel) GetFileInstance(shortUrl []byte) (*File, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"short_url": string(shortUrl),
+	}
+
+	var fileInstance File
+	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
+		return nil, err
+	}
+
+	return &fileInstance, nil
+}
+
+func (file *FileModel) RequirePassword(shortUrl []byte) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"short_url": string(shortUrl),
+	}
+
+	var fileInstance File
+	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
+		return false, err
+	}
+	
+	if fileInstance.HashedPassword == "" {
+		return false, nil
+	}
+	
+	return true, nil
 }

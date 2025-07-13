@@ -39,4 +39,6 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 	router.Router.HandlerFunc("GET", "/api/file/get", handler.GetFiles)
 	router.Router.HandlerFunc("DELETE", "/api/file/delete/:file_id", handler.DeleteFile)
 	router.Router.HandlerFunc("POST", "/api/file/rename/:file_id", handler.RenameFile)
+	router.Router.HandlerFunc("GET", "/api/file/get/:file_short_url", handler.GetFile)
+	router.Router.HandlerFunc("POST", "/api/file/get/:file_short_url", handler.GetFile)
 }

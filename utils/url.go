@@ -40,3 +40,13 @@ func ReadFileId(r *http.Request) (string, error) {
 
 	return fileId, nil
 }
+
+func ReadFileShortUrl(r *http.Request) ([]byte, error) {
+	params := httprouter.ParamsFromContext(r.Context())
+	fileId := params.ByName("file_short_url")
+	if fileId == "" {
+		return nil, errors.New("file short url is missing")
+	}
+
+	return []byte(fileId), nil
+}

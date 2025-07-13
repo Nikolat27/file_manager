@@ -26,7 +26,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 
 	newFileName := r.FormValue("file")
 	approvableStr := r.FormValue("approvable")
-	rawPassword := r.FormValue("raw_password")
+	rawPassword := r.FormValue("password")
 	maxDownloadsStr := r.FormValue("max_downloads")
 	expireAtStr := r.FormValue("expire_at")
 
@@ -73,6 +73,8 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	shortFileUrl := uuid.New().String()
+
 	salt, err := utils.GenerateSalt()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -80,20 +82,23 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var hashedPassword [32]byte
+	var encodedPasswordHash string
+
 	if rawPassword != "" {
 		hashedPassword = utils.Hash256([]byte(rawPassword), salt)
+		encodedPasswordHash = hex.EncodeToString(hashedPassword[:])
 	}
 
 	encodedSalt := hex.EncodeToString(salt)
-	encodedPasswordHash := hex.EncodeToString(hashedPassword[:])
 
-	_, err = handler.Models.File.CreateFileInstance(userId, newFileName, address, encodedSalt, encodedPasswordHash, approvable, maxDownloads, expireAt)
+	_, err = handler.Models.File.CreateFileInstance(userId, newFileName, address, shortFileUrl, encodedSalt, encodedPasswordHash, approvable, maxDownloads, expireAt)
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR creating file instance: %s", err).Error(), http.StatusBadRequest)
 		return
 	}
 
-	w.Write([]byte("file created successfully"))
+	resp := "file created successfully. Short Url: " + shortFileUrl
+	w.Write([]byte(resp))
 }
 
 func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
@@ -182,4 +187,63 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write([]byte("file`s name changed successfully"))
+}
+
+func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
+	url, err := utils.ReadFileShortUrl(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var input struct {
+		RawPassword string `json:"password"`
+	}
+
+	if r.Method == "POST" {
+		if err := utils.ReadJson(r, 1000, &input); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	requirePassword, err := handler.Models.File.RequirePassword(url)
+	if requirePassword && input.RawPassword == "" {
+		http.Error(w, "password is required (The Password must be sent via POST method)", http.StatusBadRequest)
+		return
+	}
+
+	file, err := handler.Models.File.GetFileInstance(url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if input.RawPassword != "" && requirePassword {
+		decodedHashPassword, err := hex.DecodeString(file.HashedPassword)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		decodedSalt, err := hex.DecodeString(file.Salt)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if !utils.ValidateHash([]byte(input.RawPassword), decodedHashPassword, decodedSalt) {
+			http.Error(w, "password is incorrect", http.StatusBadRequest)
+			return
+		}
+	}
+	
+	resp, err := json.MarshalIndent(file, "", "	")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(resp)
 }
