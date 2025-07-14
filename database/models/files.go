@@ -58,6 +58,7 @@ func (file *FileModel) CreateFileInstance(ownerId primitive.ObjectID,
 	return id.InsertedID.(primitive.ObjectID), nil
 }
 
+// GetFilesInstances -> Returns List
 func (file *FileModel) GetFilesInstances(ownerId primitive.ObjectID, page, pageSize int64) ([]File, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -88,6 +89,23 @@ func (file *FileModel) GetFilesInstances(ownerId primitive.ObjectID, page, pageS
 	}
 
 	return files, nil
+}
+
+// GetFileInstance -> Returns One
+func (file *FileModel) GetFileInstance(shortUrl []byte) (*File, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"short_url": string(shortUrl),
+	}
+
+	var fileInstance File
+	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
+		return nil, err
+	}
+
+	return &fileInstance, nil
 }
 
 func (file *FileModel) DeleteFileInstance(id primitive.ObjectID) error {
@@ -125,12 +143,12 @@ func (file *FileModel) GetFileAddress(id primitive.ObjectID) ([]byte, error) {
 	fileOptions := options.FindOne()
 	fileOptions.SetProjection(projection)
 
-	var deletedFile File
-	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&deletedFile); err != nil {
+	var fileInstance File
+	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
 		return nil, err
 	}
 
-	return []byte(deletedFile.Address), nil
+	return []byte(fileInstance.Address), nil
 }
 
 func (file *FileModel) RenameFileInstance(id primitive.ObjectID, newName []byte) error {
@@ -194,22 +212,6 @@ func (file *FileModel) IsFileExpired(id primitive.ObjectID) (bool, error) {
 	return false, nil
 }
 
-func (file *FileModel) GetFileInstance(shortUrl []byte) (*File, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"short_url": string(shortUrl),
-	}
-
-	var fileInstance File
-	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
-		return nil, err
-	}
-
-	return &fileInstance, nil
-}
-
 func (file *FileModel) RequirePassword(shortUrl []byte) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -228,4 +230,54 @@ func (file *FileModel) RequirePassword(shortUrl []byte) (bool, error) {
 	}
 	
 	return true, nil
+}
+
+func (file *FileModel) GetFileOwnerId(id primitive.ObjectID) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	projection := bson.M{
+		"owner_id": 1,
+	}
+
+	fileOptions := options.FindOne()
+	fileOptions.SetProjection(projection)
+
+	var fileInstance File
+	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
+		return nil, err
+	}
+
+	return []byte(fileInstance.Address), nil
+}
+
+func (file *FileModel) CheckFileRequiresApproval(id primitive.ObjectID) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	projection := bson.M{
+		"approvable": 1,
+	}
+
+	fileOptions := options.FindOne()
+	fileOptions.SetProjection(projection)
+
+	var fileInstance File
+	if err := file.DB.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
+		return false, err
+	}
+
+	if fileInstance.Approvable {
+		return true, nil
+	}
+	
+	return false, nil
 }
