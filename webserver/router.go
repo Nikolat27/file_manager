@@ -24,10 +24,7 @@ func NewRouter(handler *handlers.Handler) *Router {
 
 func (router *Router) initRoutes(handler *handlers.Handler) {
 	// Static Files
-	dir := http.Dir("./")
-	fileServer := http.FileServer(dir)
-	staticFilesHandler := http.StripPrefix("/static/", fileServer)
-
+	staticFilesHandler := getStaticFilesHandler()
 	router.Router.Handler("GET", "/static/*filepath", staticFilesHandler)
 
 	// Auth
@@ -41,4 +38,15 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 	router.Router.HandlerFunc("POST", "/api/file/rename/:file_id", handler.RenameFile)
 	router.Router.HandlerFunc("GET", "/api/file/get/:file_short_url", handler.GetFile)
 	router.Router.HandlerFunc("POST", "/api/file/get/:file_short_url", handler.GetFile)
+
+	// Approval
+	router.Router.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
+	router.Router.HandlerFunc("POST", "/api/approval/status", handler.CreateApproval)
+
+}
+
+func getStaticFilesHandler() http.Handler {
+	dir := http.Dir("./")
+	fileServer := http.FileServer(dir)
+	return http.StripPrefix("/static/", fileServer)
 }
