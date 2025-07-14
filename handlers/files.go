@@ -237,6 +237,14 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	staticFileUrl, err := utils.GetStaticFilesUrl(file.Address)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	file.Address = staticFileUrl
 	
 	resp, err := json.MarshalIndent(file, "", "	")
 	if err != nil {
