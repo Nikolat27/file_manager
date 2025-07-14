@@ -3,9 +3,11 @@ package handlers
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"file_manager/utils"
 	"fmt"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"strconv"
 	"time"
@@ -101,6 +103,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(resp))
 }
 
+// GetFiles -> Returns List
 func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
@@ -122,8 +125,82 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 
 	file, err := handler.Models.File.GetFilesInstances(userId, pageNumber, pageLimit)
 
-	data, err := json.MarshalIndent(file, "", "	")
+	data, err := json.MarshalIndent(file, "", "\t")
 	w.Write(data)
+}
+
+// GetFile -> Returns One
+func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
+	url, err := utils.ReadShortUrlParams(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	
+	var input struct {
+		RawPassword string `json:"password"`
+	} 
+	
+	// Optionally decode the JSON input for password (only POST requests)
+	if r.Method == "POST" {
+		if err := utils.ReadJson(r, 1000, &input); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Check if the file requires a password; alert if needed.
+	requirePassword, err := handler.Models.File.RequirePassword(url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	
+	if requirePassword && input.RawPassword == "" {
+		http.Error(w, "Password required (send password via POST method)", http.StatusBadRequest)
+		return
+	}
+
+	// Retrieve the file instance from the DB
+	file, err := handler.Models.File.GetFileInstance(url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// If password is required and provided, validate it
+	if requirePassword && input.RawPassword != "" {
+		if err := checkFilePassword([]byte(file.HashedPassword), []byte(file.Salt), []byte(input.RawPassword)); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	// If file`s accessing requires an approval, verify user`s approval status
+	if file.Approvable {
+		if err := checkUserApprovalStatus(r, handler, file.Id); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Generate the static file URL for access
+	staticFileUrl, err := utils.GetStaticFileUrl(file.Address)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	
+	file.Address = staticFileUrl
+
+	resp, err := json.MarshalIndent(file, "", "\t")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(resp)
 }
 
 func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
@@ -189,69 +266,47 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("file`s name changed successfully"))
 }
 
-func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
-	url, err := utils.ReadFileShortUrl(r)
+func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId primitive.ObjectID) error {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return errors.New("this file needs Approval, You must Logged in to send your approval")
 	}
 
-	var input struct {
-		RawPassword string `json:"password"`
-	}
-
-	if r.Method == "POST" {
-		if err := utils.ReadJson(r, 1000, &input); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-	}
-
-	requirePassword, err := handler.Models.File.RequirePassword(url)
-	if requirePassword && input.RawPassword == "" {
-		http.Error(w, "password is required (The Password must be sent via POST method)", http.StatusBadRequest)
-		return
-	}
-
-	file, err := handler.Models.File.GetFileInstance(url)
+	userObjectId, err := utils.ConvertStringToObjectID(payload.UserId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return err
 	}
 
-	if input.RawPassword != "" && requirePassword {
-		decodedHashPassword, err := hex.DecodeString(file.HashedPassword)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		decodedSalt, err := hex.DecodeString(file.Salt)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if !utils.ValidateHash([]byte(input.RawPassword), decodedHashPassword, decodedSalt) {
-			http.Error(w, "password is incorrect", http.StatusBadRequest)
-			return
-		}
-	}
-
-	staticFileUrl, err := utils.GetStaticFilesUrl(file.Address)
+	status, err := handler.Models.Approval.CheckUserApprovalStatus(fileId, userObjectId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return fmt.Errorf("ERROR checking user`s approval: %s", err)
 	}
 
-	file.Address = staticFileUrl
-	
-	resp, err := json.MarshalIndent(file, "", "	")
+	if status == "rejected" {
+		return errors.New("your approval has been rejected by the file owner")
+	}
+
+	if status == "pending" {
+		return errors.New("your approval is in pending status. Please be patient")
+	}
+
+	return nil
+}
+
+func checkFilePassword(hashedPassword, salt, rawPassword []byte) error {
+	decodedHashPassword, err := hex.DecodeString(string(hashedPassword))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return err
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(resp)
+	decodedSalt, err := hex.DecodeString(string(salt))
+	if err != nil {
+		return err
+	}
+
+	if !utils.ValidateHash(rawPassword, decodedHashPassword, decodedSalt) {
+		return err
+	}
+
+	return nil
 }
