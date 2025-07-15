@@ -2,12 +2,10 @@ package handlers
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"file_manager/utils"
 	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
-	"io"
 	"net/http"
 	"time"
 )
@@ -18,7 +16,7 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 
-	if err := utils.ReadJson(r, 10000, &input); err != nil {
+	if err := utils.ParseJsonData(r, 10000, &input); err != nil {
 		http.Error(w, fmt.Sprintf("ERROR reading json: %s", err), http.StatusBadRequest)
 		return
 	}
@@ -61,17 +59,11 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		RawPassword string `json:"password"`
 	}
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, 10000))
-	if err != nil {
-		fmt.Println("Error Reader: ", err)
+	if err := utils.ParseJsonData(r, 10000, &input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	if err := json.Unmarshal(body, &input); err != nil {
-		fmt.Println("Error UnMarshaller: ", err)
-		return
-	}
-
+	
 	user, err := handler.Models.User.FetchUserByUsername(input.Username)
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR creating token: %s", err).Error(), http.StatusBadRequest)
