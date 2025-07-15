@@ -41,7 +41,7 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 
 	// Approval
 	router.Router.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
-	router.Router.HandlerFunc("POST", "/api/approval/status", handler.CreateApproval)
+	router.Router.HandlerFunc("POST", "/api/approval/status", handler.ChangeApprovalStatus)
 
 }
 

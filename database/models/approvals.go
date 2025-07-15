@@ -98,11 +98,42 @@ func (approval *ApprovalModel) CheckUserApprovalStatus(fileId, senderId primitiv
 	var approvalInstance Approval
 	if err := approval.DB.Collection(ApprovalCollectionName).FindOne(ctx, filter, approvalOptions).Decode(&approvalInstance); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return "", nil
+			return "", errors.New("this approval does not exist")
 		}
 
 		return "", err
 	}
 
 	return approvalInstance.Status, nil
+}
+
+func (approval *ApprovalModel) ValidateApprovalOwner(id, userId primitive.ObjectID) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	projection := bson.M{
+		"owner_id": 1,
+	}
+
+	approvalOptions := options.FindOne()
+	approvalOptions.SetProjection(projection)
+
+	var approvalInstance Approval
+	if err := approval.DB.Collection(ApprovalCollectionName).FindOne(ctx, filter, approvalOptions).Decode(&approvalInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return errors.New("approval not found")
+		}
+
+		return err
+	}
+
+	if approvalInstance.OwnerId != userId {
+		return errors.New("this user is not the approval`s owner")
+	}
+
+	return nil
 }

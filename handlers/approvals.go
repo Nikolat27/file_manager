@@ -59,3 +59,45 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 
 	w.Write([]byte("Your Approval request has been sent successfully"))
 }
+
+func (handler *Handler) ChangeApprovalStatus(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	var input struct {
+		ApprovalId string `json:"approval_id"`
+		Status     string `json:"status"`
+	}
+
+	if err := utils.ReadJson(r, 10000, &input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	userObjectId, err := utils.ConvertStringToObjectID(payload.UserId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	approvalObjectId, err := utils.ConvertStringToObjectID(input.ApprovalId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := handler.Models.Approval.ValidateApprovalOwner(approvalObjectId, userObjectId); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := handler.Models.Approval.UpdateApprovalStatus(approvalObjectId, input.Status); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Write([]byte("Approval`s Status changed successfully"))
+}

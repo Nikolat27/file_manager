@@ -136,11 +136,11 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	var input struct {
 		RawPassword string `json:"password"`
-	} 
-	
+	}
+
 	// Optionally decode the JSON input for password (only POST requests)
 	if r.Method == "POST" {
 		if err := utils.ReadJson(r, 1000, &input); err != nil {
@@ -155,7 +155,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	if requirePassword && input.RawPassword == "" {
 		http.Error(w, "Password required (send password via POST method)", http.StatusBadRequest)
 		return
@@ -178,7 +178,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 
 	// If file`s accessing requires an approval, verify user`s approval status
 	if file.Approvable {
-		if err := checkUserApprovalStatus(r, handler, file.Id); err != nil {
+		if err := checkUserApprovalStatus(r, handler, file.Id, file.OwnerId); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -190,7 +190,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	file.Address = staticFileUrl
 
 	resp, err := json.MarshalIndent(file, "", "\t")
@@ -266,7 +266,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("file`s name changed successfully"))
 }
 
-func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId primitive.ObjectID) error {
+func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId primitive.ObjectID) error {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
 		return errors.New("this file needs Approval, You must Logged in to send your approval")
@@ -275,6 +275,11 @@ func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId primitive
 	userObjectId, err := utils.ConvertStringToObjectID(payload.UserId)
 	if err != nil {
 		return err
+	}
+
+	// The owner does not need approval
+	if userObjectId == ownerId {
+		return nil
 	}
 
 	status, err := handler.Models.Approval.CheckUserApprovalStatus(fileId, userObjectId)
