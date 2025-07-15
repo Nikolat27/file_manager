@@ -143,7 +143,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 
 	// Optionally decode the JSON input for password (only POST requests)
 	if r.Method == "POST" {
-		if err := utils.ReadJson(r, 1000, &input); err != nil {
+		if err := utils.ParseJsonData(r, 1000, &input); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -248,7 +248,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 		Name string `json:"new_name"`
 	}
 
-	if err := utils.ReadJson(r, 1000, &input); err != nil {
+	if err := utils.ParseJsonData(r, 1000, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -284,7 +284,7 @@ func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId 
 
 	status, err := handler.Models.Approval.CheckUserApprovalStatus(fileId, userObjectId)
 	if err != nil {
-		return fmt.Errorf("ERROR checking user`s approval: %s", err)
+		return err
 	}
 
 	if status == "rejected" {

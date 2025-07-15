@@ -98,7 +98,7 @@ func (approval *ApprovalModel) CheckUserApprovalStatus(fileId, senderId primitiv
 	var approvalInstance Approval
 	if err := approval.DB.Collection(ApprovalCollectionName).FindOne(ctx, filter, approvalOptions).Decode(&approvalInstance); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return "", errors.New("this approval does not exist")
+			return "", errors.New("you have to submit an approval")
 		}
 
 		return "", err

@@ -18,7 +18,7 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		Reason  string `json:"reason"`
 	}
 
-	if err := utils.ReadJson(r, 10000, &input); err != nil {
+	if err := utils.ParseJsonData(r, 10000, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -72,7 +72,7 @@ func (handler *Handler) ChangeApprovalStatus(w http.ResponseWriter, r *http.Requ
 		Status     string `json:"status"`
 	}
 
-	if err := utils.ReadJson(r, 10000, &input); err != nil {
+	if err := utils.ParseJsonData(r, 10000, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

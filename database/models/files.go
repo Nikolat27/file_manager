@@ -68,7 +68,6 @@ func (file *FileModel) GetFilesInstances(ownerId primitive.ObjectID, page, pageS
 	}
 
 	projection := bson.M{
-		"owner_id":        0,
 		"hashed_password": 0,
 		"salt":            0,
 	}
