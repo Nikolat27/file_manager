@@ -143,7 +143,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 
 	// Optionally decode the JSON input for password (only POST requests)
 	if r.Method == "POST" {
-		if err := utils.ParseJsonData(r, 1000, &input); err != nil {
+		if err := utils.ParseJsonData(r.Body, 1000, &input); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -161,7 +161,6 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Retrieve the file instance from the DB
 	file, err := handler.Models.File.GetFileInstance(url)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -248,7 +247,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 		Name string `json:"new_name"`
 	}
 
-	if err := utils.ParseJsonData(r, 1000, &input); err != nil {
+	if err := utils.ParseJsonData(r.Body, 1000, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
