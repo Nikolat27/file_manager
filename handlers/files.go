@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -25,38 +24,6 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 
 	newFileName := r.FormValue("file_name")
-	approvableStr := r.FormValue("approvable")
-	rawPassword := r.FormValue("password")
-	maxDownloadsStr := r.FormValue("max_downloads")
-	expireAtStr := r.FormValue("expire_at")
-
-	var approvable bool
-	if approvableStr != "" {
-		approvable, err = strconv.ParseBool(approvableStr)
-		if err != nil {
-			utils.WriteError(w, http.StatusBadRequest, err)
-			return
-		}
-	}
-
-	var maxDownloads uint64
-	if maxDownloadsStr != "" {
-		maxDownloads, err = strconv.ParseUint(maxDownloadsStr, 0, 64)
-		if err != nil {
-			utils.WriteError(w, http.StatusBadRequest, err)
-			return
-		}
-	}
-
-	var expireAt time.Time
-	if expireAtStr != "" {
-		expireAt, err = time.Parse("2006-01-02T15:04", expireAtStr)
-		if err != nil {
-			utils.WriteError(w, http.StatusBadRequest, err)
-			return
-		}
-	}
-
 	if newFileName == "" {
 		newFileName = uuid.New().String()
 	}
@@ -73,33 +40,13 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	salt, err := utils.GenerateSalt()
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	var hashedPassword [32]byte
-	var encodedPasswordHash string
-
-	if rawPassword != "" {
-		hashedPassword = utils.Hash256([]byte(rawPassword), salt)
-		encodedPasswordHash = hex.EncodeToString(hashedPassword[:])
-	}
-
-	encodedSalt := hex.EncodeToString(salt)
-
-	fileId, err := handler.Models.File.Create(userId, newFileName, address, expireAt)
-	if err != nil {
+	expireAt := getExpirationDate(payload.UserPlan)
+	
+	if _, err = handler.Models.File.Create(userId, newFileName, address, expireAt); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file instance: %w", err))
 		return
 	}
 
-	if err := handler.Models.FileSettings.Create(fileId, encodedSalt, encodedPasswordHash, maxDownloads, false, approvable); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file share setting instance: %w", err))
-		return
-	}
-	
 	utils.WriteJSON(w, "file created successfully")
 }
 
@@ -175,7 +122,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileShareSetting, err := handler.Models.FileSettings.GetOne(fileId)
+	fileShareSetting, err := handler.Models.FileSettings.Get(fileId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -342,15 +289,15 @@ func getMaxUploadSize(plan string) int64 {
 	}
 }
 
-func getExpirationDate(plan string) time.Duration {
+func getExpirationDate(plan string) time.Time {
 	switch plan {
 	case "free":
-		return 7 * time.Hour * 24 // 7 Days
+		return time.Now().Add(7 * time.Hour * 24) // 7 Days
 	case "plus":
-		return 30 * time.Hour * 24 // 30 Days
+		return time.Now().Add(30 * time.Hour * 24) // 30 Days
 	case "premium":
-		return 180 * time.Hour * 24 // 180 Days
+		return time.Now().Add(180 * time.Hour * 24) // 180 Days
 	default:
-		return 7 * time.Hour * 24 // 7 Days
+		return time.Now().Add(7 * time.Hour * 24) // 7 Days
 	}
 }
