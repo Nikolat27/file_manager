@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type fileModel struct {
+type FileModel struct {
 	db *mongo.Database
 }
 
@@ -38,7 +38,7 @@ type FileShareSetting struct {
 const FileCollectionName = "files"
 const FileSettingsCollectionName = "file_settings"
 
-func (file *fileModel) CreateFileInstance(ownerId primitive.ObjectID, fileName, address, shortUrl string,
+func (file *FileModel) CreateFileInstance(ownerId primitive.ObjectID, fileName, address, shortUrl string,
 	expireAt time.Time) (primitive.ObjectID, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -62,7 +62,7 @@ func (file *fileModel) CreateFileInstance(ownerId primitive.ObjectID, fileName, 
 }
 
 // GetFilesInstances -> Returns List
-func (file *fileModel) GetFilesInstances(ownerId primitive.ObjectID, page, pageSize int64) ([]File, error) {
+func (file *FileModel) GetFilesInstances(ownerId primitive.ObjectID, page, pageSize int64) ([]File, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -94,7 +94,7 @@ func (file *fileModel) GetFilesInstances(ownerId primitive.ObjectID, page, pageS
 }
 
 // GetFileInstance -> Returns One
-func (file *fileModel) GetFileInstance(id primitive.ObjectID) (*File, error) {
+func (file *FileModel) GetFileInstance(id primitive.ObjectID) (*File, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -110,7 +110,30 @@ func (file *fileModel) GetFileInstance(id primitive.ObjectID) (*File, error) {
 	return &fileInstance, nil
 }
 
-func (file *fileModel) DeleteFileInstance(id primitive.ObjectID) error {
+func (file *FileModel) GetFileIdByShortUrl(shortUrl string) (primitive.ObjectID, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"short_url": shortUrl,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
+
+	var fileInstance File
+	if err := file.db.Collection(FileCollectionName).FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
+		return primitive.NilObjectID, err
+	}
+
+	return fileInstance.Id, nil
+}
+
+func (file *FileModel) DeleteFileInstance(id primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -130,7 +153,7 @@ func (file *fileModel) DeleteFileInstance(id primitive.ObjectID) error {
 	return nil
 }
 
-func (file *fileModel) GetFileAddress(id primitive.ObjectID) ([]byte, error) {
+func (file *FileModel) GetFileAddress(id primitive.ObjectID) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -153,7 +176,7 @@ func (file *fileModel) GetFileAddress(id primitive.ObjectID) ([]byte, error) {
 	return []byte(fileInstance.Address), nil
 }
 
-func (file *fileModel) RenameFileInstance(id primitive.ObjectID, newName []byte) error {
+func (file *FileModel) RenameFileInstance(id primitive.ObjectID, newName []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -183,7 +206,7 @@ func (file *fileModel) RenameFileInstance(id primitive.ObjectID, newName []byte)
 	return nil
 }
 
-func (file *fileModel) IsFileExpired(id primitive.ObjectID) (bool, error) {
+func (file *FileModel) IsFileExpired(id primitive.ObjectID) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -214,7 +237,7 @@ func (file *fileModel) IsFileExpired(id primitive.ObjectID) (bool, error) {
 	return false, nil
 }
 
-func (file *fileModel) GetFileOwnerId(id primitive.ObjectID) ([]byte, error) {
+func (file *FileModel) GetFileOwnerId(id primitive.ObjectID) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -237,7 +260,7 @@ func (file *fileModel) GetFileOwnerId(id primitive.ObjectID) ([]byte, error) {
 	return []byte(fileInstance.Address), nil
 }
 
-func (file *fileModel) CreateFileSettingInstance(fileId primitive.ObjectID, salt, hashedPassword string, maxDownloads uint64,
+func (file *FileModel) CreateFileSettingInstance(fileId primitive.ObjectID, salt, hashedPassword string, maxDownloads uint64,
 	viewOnly, approvable bool) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -259,7 +282,7 @@ func (file *fileModel) CreateFileSettingInstance(fileId primitive.ObjectID, salt
 	return nil
 }
 
-func (file *fileModel) CheckFileRequiresApproval(fileId primitive.ObjectID) (bool, error) {
+func (file *FileModel) CheckFileRequiresApproval(fileId primitive.ObjectID) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -286,7 +309,7 @@ func (file *fileModel) CheckFileRequiresApproval(fileId primitive.ObjectID) (boo
 	return false, nil
 }
 
-func (file *fileModel) RequirePassword(fileId primitive.ObjectID) (bool, error) {
+func (file *FileModel) RequirePassword(fileId primitive.ObjectID) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -306,7 +329,7 @@ func (file *fileModel) RequirePassword(fileId primitive.ObjectID) (bool, error) 
 	return true, nil
 }
 
-func (file *fileModel) GetFileSettings(fileId primitive.ObjectID) (*FileShareSetting, error) {
+func (file *FileModel) GetFileSettings(fileId primitive.ObjectID) (*FileShareSetting, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
