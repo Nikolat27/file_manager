@@ -79,6 +79,10 @@ func (user *UserModel) UpdatePlan(id primitive.ObjectID, newPlan string) error {
 
 	result, err := user.db.Collection(userCollectionName).UpdateByID(ctx, id, update)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return errors.New("user with this Id does not exist")
+		}
+
 		return err
 	}
 
