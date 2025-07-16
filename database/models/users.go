@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -9,8 +10,8 @@ import (
 	"time"
 )
 
-type UserModel struct {
-	DB *mongo.Database
+type userModel struct {
+	db *mongo.Database
 }
 
 type User struct {
@@ -18,24 +19,26 @@ type User struct {
 	Username       string             `json:"username" bson:"username"`
 	Salt           string             `json:"salt" bson:"salt"`
 	HashedPassword string             `json:"hashed_password" bson:"hashed_password"`
+	Plan           string             `json:"plan"`
 	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
 }
 
 const userCollectionName = "users"
 
-func (user *UserModel) CreateUserInstance(username, salt, hashedPassword string) (primitive.ObjectID, error) {
+func (user *userModel) CreateUserInstance(username, salt, hashedPassword string) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	fmt.Println(username, salt, hashedPassword)
+	// All plans: Free, Plus, Premium
 	newUser := &User{
 		Username:       username,
 		Salt:           salt,
 		HashedPassword: hashedPassword,
+		Plan:           "free",
 		CreatedAt:      time.Now(),
 	}
 
-	result, err := user.DB.Collection(userCollectionName).InsertOne(ctx, newUser)
+	result, err := user.db.Collection(userCollectionName).InsertOne(ctx, newUser)
 	if err != nil {
 		return primitive.NilObjectID, fmt.Errorf("ERROR create a new user instance: %s", err)
 	}
@@ -48,7 +51,7 @@ func (user *UserModel) CreateUserInstance(username, salt, hashedPassword string)
 	return id, nil
 }
 
-func (user *UserModel) FetchUserByUsername(username string) (*User, error) {
+func (user *userModel) FetchUserByUsername(username string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -57,9 +60,35 @@ func (user *UserModel) FetchUserByUsername(username string) (*User, error) {
 	}
 
 	var userInstance User
-	if err := user.DB.Collection(userCollectionName).FindOne(ctx, filter).Decode(&userInstance); err != nil {
+	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter).Decode(&userInstance); err != nil {
 		return nil, err
 	}
 
 	return &userInstance, nil
+}
+
+func (user *userModel) UpdateUserPlan(id primitive.ObjectID, newPlan string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	update := bson.M{
+		"$set": bson.M{
+			"plan": newPlan,
+		},
+	}
+
+	result, err := user.db.Collection(userCollectionName).UpdateByID(ctx, id, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return errors.New("user with this Id does not exist")
+	}
+
+	if result.ModifiedCount == 0 {
+		return errors.New("did not detect any change")
+	}
+
+	return nil
 }

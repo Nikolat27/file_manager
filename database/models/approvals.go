@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-type ApprovalModel struct {
-	DB *mongo.Database
+type approvalModel struct {
+	db *mongo.Database
 }
 
 type Approval struct {
@@ -27,7 +27,7 @@ type Approval struct {
 
 const ApprovalCollectionName = "approvals"
 
-func (approval *ApprovalModel) CreateApprovalInstance(fileId, ownerId, senderId primitive.ObjectID, reason string) (primitive.ObjectID, error) {
+func (approval *approvalModel) CreateApprovalInstance(fileId, ownerId, senderId primitive.ObjectID, reason string) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -40,7 +40,7 @@ func (approval *ApprovalModel) CreateApprovalInstance(fileId, ownerId, senderId 
 		CreatedAt: time.Now(),
 	}
 
-	id, err := approval.DB.Collection(ApprovalCollectionName).InsertOne(ctx, newApproval)
+	id, err := approval.db.Collection(ApprovalCollectionName).InsertOne(ctx, newApproval)
 	if err != nil {
 		return primitive.NilObjectID, err
 	}
@@ -48,7 +48,7 @@ func (approval *ApprovalModel) CreateApprovalInstance(fileId, ownerId, senderId 
 	return id.InsertedID.(primitive.ObjectID), nil
 }
 
-func (approval *ApprovalModel) UpdateApprovalStatus(id primitive.ObjectID, status string) error {
+func (approval *approvalModel) UpdateApprovalStatus(id primitive.ObjectID, status string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -63,7 +63,7 @@ func (approval *ApprovalModel) UpdateApprovalStatus(id primitive.ObjectID, statu
 		},
 	}
 
-	result, err := approval.DB.Collection(ApprovalCollectionName).UpdateByID(ctx, id, update)
+	result, err := approval.db.Collection(ApprovalCollectionName).UpdateByID(ctx, id, update)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (approval *ApprovalModel) UpdateApprovalStatus(id primitive.ObjectID, statu
 	return nil
 }
 
-func (approval *ApprovalModel) CheckUserApprovalStatus(fileId, senderId primitive.ObjectID) (string, error) {
+func (approval *approvalModel) CheckUserApprovalStatus(fileId, senderId primitive.ObjectID) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -96,7 +96,7 @@ func (approval *ApprovalModel) CheckUserApprovalStatus(fileId, senderId primitiv
 	approvalOptions.SetProjection(projection)
 
 	var approvalInstance Approval
-	if err := approval.DB.Collection(ApprovalCollectionName).FindOne(ctx, filter, approvalOptions).Decode(&approvalInstance); err != nil {
+	if err := approval.db.Collection(ApprovalCollectionName).FindOne(ctx, filter, approvalOptions).Decode(&approvalInstance); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return "", errors.New("you have to submit an approval")
 		}
@@ -107,7 +107,7 @@ func (approval *ApprovalModel) CheckUserApprovalStatus(fileId, senderId primitiv
 	return approvalInstance.Status, nil
 }
 
-func (approval *ApprovalModel) ValidateApprovalOwner(id, userId primitive.ObjectID) error {
+func (approval *approvalModel) ValidateApprovalOwner(id, userId primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -123,7 +123,7 @@ func (approval *ApprovalModel) ValidateApprovalOwner(id, userId primitive.Object
 	approvalOptions.SetProjection(projection)
 
 	var approvalInstance Approval
-	if err := approval.DB.Collection(ApprovalCollectionName).FindOne(ctx, filter, approvalOptions).Decode(&approvalInstance); err != nil {
+	if err := approval.db.Collection(ApprovalCollectionName).FindOne(ctx, filter, approvalOptions).Decode(&approvalInstance); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return errors.New("approval not found")
 		}
