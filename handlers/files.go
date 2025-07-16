@@ -105,7 +105,8 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := "file created successfully. Short Url: " + shortFileUrl
-	w.Write([]byte(resp))
+
+	utils.WriteJSON(w, resp)
 }
 
 // GetFiles -> Returns List
@@ -131,7 +132,8 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 	file, err := handler.Models.File.GetAll(userId, pageNumber, pageLimit)
 
 	data, err := json.MarshalIndent(file, "", "\t")
-	w.Write(data)
+	
+	utils.WriteJSON(w, data)
 }
 
 // GetFile -> Returns One
@@ -148,12 +150,12 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 
 	// Optionally decode the JSON input for password (only POST requests)
 	if r.Method == "POST" {
-		if err := utils.ParseJson(r.Body, 1000, &input); err != nil {
+		if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
-	
+
 	fileId, err := handler.Models.File.GetIdByShortUrl(fileShortUrl)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -207,7 +209,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(resp)
+	utils.WriteJSON(w, resp)
 }
 
 func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
@@ -235,7 +237,7 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte("file deleted successfully"))
+	utils.WriteJSON(w, "file deleted successfully")
 }
 
 func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
@@ -255,7 +257,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 		Name string `json:"new_name"`
 	}
 
-	if err := utils.ParseJson(r.Body, 1000, &input); err != nil {
+	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -270,7 +272,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte("file`s name changed successfully"))
+	utils.WriteJSON(w, "file`s name changed successfully")
 }
 
 func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId primitive.ObjectID) error {
@@ -288,7 +290,7 @@ func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId 
 	if userObjectId == ownerId {
 		return nil
 	}
-	
+
 	status, err := handler.Models.Approval.CheckStatus(fileId, userObjectId)
 	if err != nil {
 		return err

@@ -16,7 +16,7 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 
-	if err := utils.ParseJson(r.Body, 10000, &input); err != nil {
+	if err := utils.ParseJSON(r.Body, 10000, &input); err != nil {
 		http.Error(w, fmt.Sprintf("ERROR reading json: %s", err), http.StatusBadRequest)
 		return
 	}
@@ -39,12 +39,14 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	if _, err = handler.Models.User.GetByUsername(input.Username); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			if _, err := handler.Models.User.Create(input.Username, encodedSalt, encodedHash); err != nil {
+			_, err := handler.Models.User.Create(input.Username, encodedSalt, encodedHash)
+			if err != nil {
 				http.Error(w, fmt.Errorf("creating user instance: %s", err).Error(), http.StatusBadRequest)
 				return
+			} else {
+				utils.WriteJSON(w, "user registered successfully")
+				return
 			}
-
-			return
 		}
 		http.Error(w, fmt.Errorf("fetch user: %s", err).Error(), http.StatusBadRequest)
 		return
@@ -59,7 +61,7 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		RawPassword string `json:"password"`
 	}
 
-	if err := utils.ParseJson(r.Body, 10000, &input); err != nil {
+	if err := utils.ParseJSON(r.Body, 10000, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -93,5 +95,5 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(token))
+	utils.WriteJSON(w, token)
 }
