@@ -10,6 +10,6 @@ func ParseJsonData(reqBody io.ReadCloser, maxBytes int64, input any) error {
 	if err != nil {
 		return err
 	}
-
+	
 	return json.Unmarshal(body, input)
 }
