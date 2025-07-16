@@ -25,18 +25,7 @@ type File struct {
 	ExpireAt  time.Time          `json:"expire_at" bson:"expire_at"`
 }
 
-type FileShareSetting struct {
-	Id             primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	FileId         primitive.ObjectID `json:"file_id" bson:"file_id"`
-	Salt           string             `json:"salt" bson:"salt"`
-	HashedPassword string             `json:"hashed_password" bson:"hashed_password"`
-	MaxDownloads   uint64             `json:"max_downloads" bson:"max_downloads"`
-	ViewOnly       bool               `json:"view_only" bson:"view_only"`
-	Approvable     bool               `json:"approvable" bson:"approvable"`
-}
-
 const FileCollectionName = "files"
-const FileSettingsCollectionName = "file_settings"
 
 func (file *FileModel) CreateFileInstance(ownerId primitive.ObjectID, fileName, address, shortUrl string,
 	expireAt time.Time) (primitive.ObjectID, error) {
@@ -270,93 +259,4 @@ func (file *FileModel) GetFileOwnerId(id primitive.ObjectID) ([]byte, error) {
 	}
 
 	return []byte(fileInstance.Address), nil
-}
-
-func (file *FileModel) CreateFileSettingInstance(fileId primitive.ObjectID, salt, hashedPassword string, maxDownloads uint64,
-	viewOnly, approvable bool) error {
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	newFile := &FileShareSetting{
-		FileId:         fileId,
-		Salt:           salt,
-		HashedPassword: hashedPassword,
-		MaxDownloads:   maxDownloads,
-		ViewOnly:       viewOnly,
-		Approvable:     approvable,
-	}
-
-	if _, err := file.db.Collection(FileSettingsCollectionName).InsertOne(ctx, newFile); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (file *FileModel) CheckFileRequiresApproval(fileId primitive.ObjectID) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"file_id": fileId,
-	}
-
-	projection := bson.M{
-		"approvable": 1,
-	}
-
-	fileOptions := options.FindOne()
-	fileOptions.SetProjection(projection)
-
-	var fileInstance FileShareSetting
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
-		return false, err
-	}
-
-	if fileInstance.Approvable {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-func (file *FileModel) RequirePassword(fileId primitive.ObjectID) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"file_id": fileId,
-	}
-
-	var fileInstance FileShareSetting
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
-		return false, err
-	}
-
-	if fileInstance.HashedPassword == "" {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (file *FileModel) GetFileSettings(fileId primitive.ObjectID) (*FileShareSetting, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"file_id": fileId,
-	}
-
-	var fileInstance FileShareSetting
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, errors.New("file with this Id does not exist")
-		}
-
-		return nil, err
-	}
-
-	return &fileInstance, nil
 }

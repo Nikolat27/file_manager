@@ -5,15 +5,17 @@ import (
 )
 
 type Models struct {
-	User     UserModel
-	File     FileModel
-	Approval ApprovalModel
+	User         UserModel
+	File         FileModel
+	FileSettings FileSettingModel
+	Approval     ApprovalModel
 }
 
 func New(db *mongo.Database) *Models {
 	return &Models{
-		User:     UserModel{db: db},
-		File:     FileModel{db: db},
-		Approval: ApprovalModel{db: db},
+		User:         UserModel{db: db},
+		File:         FileModel{db: db},
+		FileSettings: FileSettingModel{db: db},
+		Approval:     ApprovalModel{db: db},
 	}
 }

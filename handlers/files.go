@@ -99,7 +99,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.Models.File.CreateFileSettingInstance(fileId, encodedSalt, encodedPasswordHash, maxDownloads, false, approvable); err != nil {
+	if err := handler.Models.FileSettings.CreateSettingInstance(fileId, encodedSalt, encodedPasswordHash, maxDownloads, false, approvable); err != nil {
 		http.Error(w, fmt.Errorf("ERROR creating file share setting instance: %s", err).Error(), http.StatusBadRequest)
 		return
 	}
@@ -161,7 +161,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the fileShareSetting requires a password; alert if needed.
-	requirePassword, err := handler.Models.File.RequirePassword(fileId)
+	requirePassword, err := handler.Models.FileSettings.RequirePassword(fileId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -172,7 +172,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileShareSetting, err := handler.Models.File.GetFileSettings(fileId)
+	fileShareSetting, err := handler.Models.FileSettings.GetFileSettings(fileId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
