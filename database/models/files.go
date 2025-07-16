@@ -104,6 +104,10 @@ func (file *FileModel) GetFileInstance(id primitive.ObjectID) (*File, error) {
 
 	var fileInstance File
 	if err := file.db.Collection(FileCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, errors.New("file with this id does not exist")
+		}
+
 		return nil, err
 	}
 
@@ -127,6 +131,10 @@ func (file *FileModel) GetFileIdByShortUrl(shortUrl string) (primitive.ObjectID,
 
 	var fileInstance File
 	if err := file.db.Collection(FileCollectionName).FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return primitive.NilObjectID, errors.New("file with this short url does not exist")
+		}
+
 		return primitive.NilObjectID, err
 	}
 
@@ -170,6 +178,10 @@ func (file *FileModel) GetFileAddress(id primitive.ObjectID) ([]byte, error) {
 
 	var fileInstance File
 	if err := file.db.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, errors.New("file with this Id does not exist")
+		}
+
 		return nil, err
 	}
 
@@ -339,6 +351,10 @@ func (file *FileModel) GetFileSettings(fileId primitive.ObjectID) (*FileShareSet
 
 	var fileInstance FileShareSetting
 	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, errors.New("file with this Id does not exist")
+		}
+
 		return nil, err
 	}
 
