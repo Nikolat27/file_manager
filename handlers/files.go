@@ -26,7 +26,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, MaxUploadSize)
 
-	newFileName := r.FormValue("file")
+	newFileName := r.FormValue("file_name")
 	approvableStr := r.FormValue("approvable")
 	rawPassword := r.FormValue("password")
 	maxDownloadsStr := r.FormValue("max_downloads")
@@ -93,9 +93,14 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 
 	encodedSalt := hex.EncodeToString(salt)
 
-	_, err = handler.Models.File.CreateFileInstance(userId, newFileName, address, shortFileUrl, encodedSalt, encodedPasswordHash, approvable, maxDownloads, expireAt)
+	fileId, err := handler.Models.File.CreateFileInstance(userId, newFileName, address, shortFileUrl, expireAt)
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR creating file instance: %s", err).Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := handler.Models.File.CreateFileSettingInstance(fileId, encodedSalt, encodedPasswordHash, maxDownloads, false, approvable); err != nil {
+		http.Error(w, fmt.Errorf("ERROR creating file share setting instance: %s", err).Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -131,7 +136,7 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 
 // GetFile -> Returns One
 func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
-	url, err := utils.ReadShortUrlParams(r)
+	fileId, err := utils.ReadFileId(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -149,8 +154,14 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check if the file requires a password; alert if needed.
-	requirePassword, err := handler.Models.File.RequirePassword(url)
+	fileObjectId, err := utils.ConvertStringToObjectID(fileId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Check if the fileShareSetting requires a password; alert if needed.
+	requirePassword, err := handler.Models.File.RequirePassword(fileObjectId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -161,7 +172,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err := handler.Models.File.GetFileInstance(url)
+	fileShareSetting, err := handler.Models.File.GetFileSettings(fileObjectId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -169,30 +180,27 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 
 	// If password is required and provided, validate it
 	if requirePassword && input.RawPassword != "" {
-		if err := checkFilePassword([]byte(file.HashedPassword), []byte(file.Salt), []byte(input.RawPassword)); err != nil {
+		if err := checkFilePassword([]byte(fileShareSetting.HashedPassword), []byte(fileShareSetting.Salt), []byte(input.RawPassword)); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 
-	// If file`s accessing requires an approval, verify user`s approval status
-	if file.Approvable {
+	file, err := handler.Models.File.GetFileInstance(fileObjectId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// If fileShareSetting`s accessing requires an approval, verify user`s approval status
+	if fileShareSetting.Approvable {
 		if err := checkUserApprovalStatus(r, handler, file.Id, file.OwnerId); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 
-	// Generate the static file URL for access
-	staticFileUrl, err := utils.GetStaticFileUrl(file.Address)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	file.Address = staticFileUrl
-
-	resp, err := json.MarshalIndent(file, "", "\t")
+	resp, err := json.MarshalIndent(&file, "", "\t")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -280,7 +288,7 @@ func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId 
 	if userObjectId == ownerId {
 		return nil
 	}
-
+	
 	status, err := handler.Models.Approval.CheckUserApprovalStatus(fileId, userObjectId)
 	if err != nil {
 		return err
@@ -309,7 +317,7 @@ func checkFilePassword(hashedPassword, salt, rawPassword []byte) error {
 	}
 
 	if !utils.ValidateHash(rawPassword, decodedHashPassword, decodedSalt) {
-		return err
+		return errors.New("password is invalid")
 	}
 
 	return nil
