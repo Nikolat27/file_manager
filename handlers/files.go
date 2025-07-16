@@ -20,7 +20,7 @@ const (
 func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusUnauthorized, err)
 		return
 	}
 
@@ -36,7 +36,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	if approvableStr != "" {
 		approvable, err = strconv.ParseBool(approvableStr)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			utils.WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
@@ -45,7 +45,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	if maxDownloadsStr != "" {
 		maxDownloads, err = strconv.ParseUint(maxDownloadsStr, 0, 64)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			utils.WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
@@ -54,7 +54,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	if expireAtStr != "" {
 		expireAt, err = time.Parse("2006-01-02T15:04", expireAtStr)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			utils.WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
@@ -65,13 +65,13 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 
 	address, err := utils.UploadFileToDisk("file", payload.UserId, r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	userId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -79,7 +79,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 
 	salt, err := utils.GenerateSalt()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -95,12 +95,12 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 
 	fileId, err := handler.Models.File.Create(userId, newFileName, address, shortFileUrl, expireAt)
 	if err != nil {
-		http.Error(w, fmt.Errorf("ERROR creating file instance: %s", err).Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file instance: %w", err))
 		return
 	}
 
 	if err := handler.Models.FileSettings.Create(fileId, encodedSalt, encodedPasswordHash, maxDownloads, false, approvable); err != nil {
-		http.Error(w, fmt.Errorf("ERROR creating file share setting instance: %s", err).Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file share setting instance: %w", err))
 		return
 	}
 
@@ -113,26 +113,33 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
-		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("checking auth: %w", err))
 		return
 	}
 
 	pageNumber, pageLimit, err := utils.GetPaginationParams(r)
 	if err != nil {
-		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("pagination params: %w", err))
 		return
 	}
 
 	userId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
-		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
 		return
 	}
 
 	file, err := handler.Models.File.GetAll(userId, pageNumber, pageLimit)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
 
 	data, err := json.MarshalIndent(file, "", "\t")
-	
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
 	utils.WriteJSON(w, data)
 }
 
@@ -140,7 +147,7 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 	fileShortUrl, err := utils.ParseIdParam(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -151,89 +158,92 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 	// Optionally decode the JSON input for password (only POST requests)
 	if r.Method == "POST" {
 		if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			utils.WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
 
 	fileId, err := handler.Models.File.GetIdByShortUrl(fileShortUrl)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	// Check if the fileShareSetting requires a password; alert if needed.
 	requirePassword, err := handler.Models.FileSettings.IsPasswordRequired(fileId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	if requirePassword && input.RawPassword == "" {
-		http.Error(w, "Password required (send password via POST method)", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, errors.New("password required (send password via POST method)"))
 		return
 	}
 
 	fileShareSetting, err := handler.Models.FileSettings.GetOne(fileId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	// If password is required and provided, validate it
 	if requirePassword && input.RawPassword != "" {
 		if err := checkFilePassword([]byte(fileShareSetting.HashedPassword), []byte(fileShareSetting.Salt), []byte(input.RawPassword)); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			utils.WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
 
 	file, err := handler.Models.File.GetOne(fileId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	// If fileShareSetting`s accessing requires an approval, verify user`s approval status
 	if fileShareSetting.Approvable {
 		if err := checkUserApprovalStatus(r, handler, file.Id, file.OwnerId); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			utils.WriteError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
 
 	resp, err := json.MarshalIndent(&file, "", "\t")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	utils.WriteJSON(w, resp)
 }
 
 func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 	fileId, err := utils.ParseIdParam(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	fileObjectId, err := utils.ToObjectID(fileId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
 
 	address, err := handler.Models.File.GetDiskAddressById(fileObjectId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	if err := utils.DeleteFileFromDisk(address); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	if err := handler.Models.File.Delete(fileObjectId); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -243,13 +253,13 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	fileId, err := utils.ParseIdParam(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	fileObjectId, err := utils.ToObjectID(fileId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -258,17 +268,17 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	if input.Name == "" {
-		http.Error(w, "'new_name' parameter is missing", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, errors.New("'new_name' parameter is missing"))
 		return
 	}
 
 	if err := handler.Models.File.Rename(fileObjectId, []byte(input.Name)); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -278,7 +288,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId primitive.ObjectID) error {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
-		return errors.New("this file needs Approval, You must Logged in to send your approval")
+		return errors.New("this file needs approval, you must be logged in to send your approval")
 	}
 
 	userObjectId, err := utils.ToObjectID(payload.UserId)
