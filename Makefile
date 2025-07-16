@@ -1,6 +1,6 @@
 include .env
 
-run:
+runserver:
 	go run cmd/main.go
 	
 github-push:
