@@ -136,7 +136,7 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 
 // GetFile -> Returns One
 func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
-	fileId, err := utils.ReadFileId(r)
+	fileShortUrl, err := utils.ParseIdParam(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -153,15 +153,15 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	fileObjectId, err := utils.ConvertStringToObjectID(fileId)
+	
+	fileId, err := handler.Models.File.GetFileIdByShortUrl(fileShortUrl)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Check if the fileShareSetting requires a password; alert if needed.
-	requirePassword, err := handler.Models.File.RequirePassword(fileObjectId)
+	requirePassword, err := handler.Models.File.RequirePassword(fileId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -172,7 +172,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileShareSetting, err := handler.Models.File.GetFileSettings(fileObjectId)
+	fileShareSetting, err := handler.Models.File.GetFileSettings(fileId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -186,7 +186,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	file, err := handler.Models.File.GetFileInstance(fileObjectId)
+	file, err := handler.Models.File.GetFileInstance(fileId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -211,7 +211,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
-	fileId, err := utils.ReadFileId(r)
+	fileId, err := utils.ParseIdParam(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -239,7 +239,7 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
-	fileId, err := utils.ReadFileId(r)
+	fileId, err := utils.ParseIdParam(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
