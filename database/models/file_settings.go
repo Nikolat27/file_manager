@@ -17,11 +17,14 @@ type FileSettingModel struct {
 type FileSettings struct {
 	Id             primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	FileId         primitive.ObjectID `json:"file_id" bson:"file_id"`
+	ShortUrl       string             `json:"short_url" bson:"short_url"`
 	Salt           string             `json:"salt" bson:"salt"`
 	HashedPassword string             `json:"hashed_password" bson:"hashed_password"`
 	MaxDownloads   uint64             `json:"max_downloads" bson:"max_downloads"`
 	ViewOnly       bool               `json:"view_only" bson:"view_only"`
 	Approvable     bool               `json:"approvable" bson:"approvable"`
+	ExpirationAt   time.Duration      `json:"expiration_at" bson:"expiration_at"`
+	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
 }
 
 const FileSettingsCollectionName = "file_settings"

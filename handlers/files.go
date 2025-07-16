@@ -13,10 +13,6 @@ import (
 	"time"
 )
 
-const (
-	MaxUploadSize = 100 << 20
-)
-
 func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
@@ -24,7 +20,9 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, MaxUploadSize)
+	maxUploadSize := getMaxUploadSize(payload.UserPlan)
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 
 	newFileName := r.FormValue("file_name")
 	approvableStr := r.FormValue("approvable")
@@ -75,8 +73,6 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortFileUrl := uuid.New().String()
-
 	salt, err := utils.GenerateSalt()
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -93,7 +89,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 
 	encodedSalt := hex.EncodeToString(salt)
 
-	fileId, err := handler.Models.File.Create(userId, newFileName, address, shortFileUrl, expireAt)
+	fileId, err := handler.Models.File.Create(userId, newFileName, address, expireAt)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file instance: %w", err))
 		return
@@ -103,10 +99,8 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file share setting instance: %w", err))
 		return
 	}
-
-	resp := "file created successfully. Short Url: " + shortFileUrl
-
-	utils.WriteJSON(w, resp)
+	
+	utils.WriteJSON(w, "file created successfully")
 }
 
 // GetFiles -> Returns List
@@ -333,4 +327,30 @@ func checkFilePassword(hashedPassword, salt, rawPassword []byte) error {
 	}
 
 	return nil
+}
+
+func getMaxUploadSize(plan string) int64 {
+	switch plan {
+	case "free":
+		return 100 << 20 // 100 MB
+	case "plus":
+		return 2000 << 20 // 2 GB
+	case "premium":
+		return 20000 << 20 // 20 GB
+	default:
+		return 100 << 20 // default 100 MB
+	}
+}
+
+func getExpirationDate(plan string) time.Duration {
+	switch plan {
+	case "free":
+		return 7 * time.Hour * 24 // 7 Days
+	case "plus":
+		return 30 * time.Hour * 24 // 30 Days
+	case "premium":
+		return 180 * time.Hour * 24 // 180 Days
+	default:
+		return 7 * time.Hour * 24 // 7 Days
+	}
 }

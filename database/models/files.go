@@ -19,13 +19,12 @@ type File struct {
 	OwnerId   primitive.ObjectID `json:"owner_id" bson:"owner_id"`
 	Name      string             `json:"name" bson:"name"`
 	Address   string             `json:"address" bson:"address"`
-	ShortUrl  string             `json:"short_url" bson:"short_url"`
 	TotalSize float64            `json:"total_size" bson:"total_size"`
-	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
 	ExpireAt  time.Time          `json:"expire_at" bson:"expire_at"`
+	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
 }
 
-func (file *FileModel) Create(ownerId primitive.ObjectID, fileName, address, shortUrl string,
+func (file *FileModel) Create(ownerId primitive.ObjectID, fileName, address string,
 	expireAt time.Time) (primitive.ObjectID, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -35,9 +34,8 @@ func (file *FileModel) Create(ownerId primitive.ObjectID, fileName, address, sho
 		OwnerId:   ownerId,
 		Name:      fileName,
 		Address:   address,
-		ShortUrl:  shortUrl,
-		CreatedAt: time.Now(),
 		ExpireAt:  expireAt,
+		CreatedAt: time.Now(),
 	}
 
 	id, err := file.db.Collection("files").InsertOne(ctx, newFile)
@@ -174,7 +172,7 @@ func (file *FileModel) IsExpired(id primitive.ObjectID) (bool, error) {
 	if fileInstance.ExpireAt.IsZero() {
 		return false, nil
 	}
-
+	
 	if time.Now().After(fileInstance.ExpireAt) {
 		return true, nil
 	}

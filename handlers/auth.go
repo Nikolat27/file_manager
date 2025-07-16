@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const DefaultPlan = "free"
+
 func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Username string `json:"username"`
@@ -35,19 +37,18 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	hashedPassword := utils.Hash256([]byte(input.Password), salt)
 	encodedHash := hex.EncodeToString(hashedPassword[:])
 	encodedSalt := hex.EncodeToString(salt)
-
-	_, err = handler.Models.User.GetByUsername(input.Username)
-	if err == nil {
+	
+	if _, err = handler.Models.User.GetByUsername(input.Username); err == nil {
 		utils.WriteError(w, http.StatusBadRequest, errors.New("this username is taken already"))
 		return
 	}
+	
 	if !errors.Is(err, mongo.ErrNoDocuments) {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("fetch user: %w", err))
 		return
 	}
-
-	_, err = handler.Models.User.Create(input.Username, encodedSalt, encodedHash)
-	if err != nil {
+	
+	if _, err = handler.Models.User.Create(input.Username, DefaultPlan, encodedSalt, encodedHash); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("creating user instance: %w", err))
 		return
 	}
@@ -89,7 +90,7 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := handler.PasetoMaker.CreateToken(user.Username, user.Id.Hex(), 24*time.Hour)
+	token, err := handler.PasetoMaker.CreateToken(user.Username, user.Id.Hex(), user.Plan, 24*time.Hour)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("error creating token: %w", err))
 		return

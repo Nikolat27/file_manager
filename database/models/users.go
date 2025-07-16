@@ -17,24 +17,24 @@ type UserModel struct {
 type User struct {
 	Id             primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
 	Username       string             `json:"username" bson:"username"`
+	Plan           string             `json:"plan"`
 	Salt           string             `json:"salt" bson:"salt"`
 	HashedPassword string             `json:"hashed_password" bson:"hashed_password"`
-	Plan           string             `json:"plan"`
 	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
 }
 
 const userCollectionName = "users"
 
-func (user *UserModel) Create(username, salt, hashedPassword string) (primitive.ObjectID, error) {
+func (user *UserModel) Create(username, plan, salt, hashedPassword string) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// All plans: Free, Plus, Premium
 	newUser := &User{
 		Username:       username,
+		Plan:           plan,
 		Salt:           salt,
 		HashedPassword: hashedPassword,
-		Plan:           "free",
 		CreatedAt:      time.Now(),
 	}
 
@@ -49,6 +49,22 @@ func (user *UserModel) Create(username, salt, hashedPassword string) (primitive.
 	}
 
 	return id, nil
+}
+
+func (user *UserModel) GetById(id string) (*User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	var userInstance User
+	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter).Decode(&userInstance); err != nil {
+		return nil, err
+	}
+
+	return &userInstance, nil
 }
 
 func (user *UserModel) GetByUsername(username string) (*User, error) {
