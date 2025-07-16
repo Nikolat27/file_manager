@@ -37,9 +37,9 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	encodedHash := hex.EncodeToString(hashedPassword[:])
 	encodedSalt := hex.EncodeToString(salt)
 
-	if _, err = handler.Models.User.FetchUserByUsername(input.Username); err != nil {
+	if _, err = handler.Models.User.GetByUsername(input.Username); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			if _, err := handler.Models.User.CreateUserInstance(input.Username, encodedSalt, encodedHash); err != nil {
+			if _, err := handler.Models.User.Create(input.Username, encodedSalt, encodedHash); err != nil {
 				http.Error(w, fmt.Errorf("creating user instance: %s", err).Error(), http.StatusBadRequest)
 				return
 			}
@@ -64,7 +64,7 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := handler.Models.User.FetchUserByUsername(input.Username)
+	user, err := handler.Models.User.GetByUsername(input.Username)
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR creating token: %s", err).Error(), http.StatusBadRequest)
 		return

@@ -25,7 +25,7 @@ type User struct {
 
 const userCollectionName = "users"
 
-func (user *UserModel) CreateUserInstance(username, salt, hashedPassword string) (primitive.ObjectID, error) {
+func (user *UserModel) Create(username, salt, hashedPassword string) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -51,7 +51,7 @@ func (user *UserModel) CreateUserInstance(username, salt, hashedPassword string)
 	return id, nil
 }
 
-func (user *UserModel) FetchUserByUsername(username string) (*User, error) {
+func (user *UserModel) GetByUsername(username string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -67,7 +67,7 @@ func (user *UserModel) FetchUserByUsername(username string) (*User, error) {
 	return &userInstance, nil
 }
 
-func (user *UserModel) UpdateUserPlan(id primitive.ObjectID, newPlan string) error {
+func (user *UserModel) UpdatePlan(id primitive.ObjectID, newPlan string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

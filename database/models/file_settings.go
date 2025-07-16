@@ -26,7 +26,7 @@ type FileSettings struct {
 
 const FileSettingsCollectionName = "file_settings"
 
-func (file *FileSettingModel) CreateSettingInstance(fileId primitive.ObjectID, salt, hashedPassword string, maxDownloads uint64,
+func (file *FileSettingModel) Create(fileId primitive.ObjectID, salt, hashedPassword string, maxDownloads uint64,
 	viewOnly, approvable bool) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -48,7 +48,7 @@ func (file *FileSettingModel) CreateSettingInstance(fileId primitive.ObjectID, s
 	return nil
 }
 
-func (file *FileSettingModel) CheckFileRequiresApproval(fileId primitive.ObjectID) (bool, error) {
+func (file *FileSettingModel) IsApprovalRequired(fileId primitive.ObjectID) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -75,7 +75,7 @@ func (file *FileSettingModel) CheckFileRequiresApproval(fileId primitive.ObjectI
 	return false, nil
 }
 
-func (file *FileSettingModel) RequirePassword(fileId primitive.ObjectID) (bool, error) {
+func (file *FileSettingModel) IsPasswordRequired(fileId primitive.ObjectID) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -95,7 +95,7 @@ func (file *FileSettingModel) RequirePassword(fileId primitive.ObjectID) (bool, 
 	return true, nil
 }
 
-func (file *FileSettingModel) GetFileSettings(fileId primitive.ObjectID) (*FileSettings, error) {
+func (file *FileSettingModel) GetOne(fileId primitive.ObjectID) (*FileSettings, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

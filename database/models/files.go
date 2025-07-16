@@ -25,9 +25,7 @@ type File struct {
 	ExpireAt  time.Time          `json:"expire_at" bson:"expire_at"`
 }
 
-const FileCollectionName = "files"
-
-func (file *FileModel) CreateFileInstance(ownerId primitive.ObjectID, fileName, address, shortUrl string,
+func (file *FileModel) Create(ownerId primitive.ObjectID, fileName, address, shortUrl string,
 	expireAt time.Time) (primitive.ObjectID, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -42,7 +40,7 @@ func (file *FileModel) CreateFileInstance(ownerId primitive.ObjectID, fileName, 
 		ExpireAt:  expireAt,
 	}
 
-	id, err := file.db.Collection(FileCollectionName).InsertOne(ctx, newFile)
+	id, err := file.db.Collection("files").InsertOne(ctx, newFile)
 	if err != nil {
 		return primitive.NilObjectID, err
 	}
@@ -50,8 +48,8 @@ func (file *FileModel) CreateFileInstance(ownerId primitive.ObjectID, fileName, 
 	return id.InsertedID.(primitive.ObjectID), nil
 }
 
-// GetFilesInstances -> Returns List
-func (file *FileModel) GetFilesInstances(ownerId primitive.ObjectID, page, pageSize int64) ([]File, error) {
+// GetAll -> Returns List
+func (file *FileModel) GetAll(ownerId primitive.ObjectID, page, pageSize int64) ([]File, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -69,7 +67,7 @@ func (file *FileModel) GetFilesInstances(ownerId primitive.ObjectID, page, pageS
 	findOptions.SetSkip((page - 1) * pageSize)
 	findOptions.SetLimit(pageSize)
 
-	cursor, err := file.db.Collection(FileCollectionName).Find(ctx, filter, findOptions)
+	cursor, err := file.db.Collection("files").Find(ctx, filter, findOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +80,8 @@ func (file *FileModel) GetFilesInstances(ownerId primitive.ObjectID, page, pageS
 	return files, nil
 }
 
-// GetFileInstance -> Returns One
-func (file *FileModel) GetFileInstance(id primitive.ObjectID) (*File, error) {
+// GetOne -> Returns One
+func (file *FileModel) GetOne(id primitive.ObjectID) (*File, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -92,7 +90,7 @@ func (file *FileModel) GetFileInstance(id primitive.ObjectID) (*File, error) {
 	}
 
 	var fileInstance File
-	if err := file.db.Collection(FileCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
+	if err := file.db.Collection("files").FindOne(ctx, filter).Decode(&fileInstance); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, errors.New("file with this id does not exist")
 		}
@@ -103,34 +101,7 @@ func (file *FileModel) GetFileInstance(id primitive.ObjectID) (*File, error) {
 	return &fileInstance, nil
 }
 
-func (file *FileModel) GetFileIdByShortUrl(shortUrl string) (primitive.ObjectID, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"short_url": shortUrl,
-	}
-
-	projection := bson.M{
-		"_id": 1,
-	}
-
-	findOptions := options.FindOne()
-	findOptions.SetProjection(projection)
-
-	var fileInstance File
-	if err := file.db.Collection(FileCollectionName).FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return primitive.NilObjectID, errors.New("file with this short url does not exist")
-		}
-
-		return primitive.NilObjectID, err
-	}
-
-	return fileInstance.Id, nil
-}
-
-func (file *FileModel) DeleteFileInstance(id primitive.ObjectID) error {
+func (file *FileModel) Delete(id primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -138,7 +109,7 @@ func (file *FileModel) DeleteFileInstance(id primitive.ObjectID) error {
 		"_id": id,
 	}
 
-	deletedCount, err := file.db.Collection(FileCollectionName).DeleteOne(ctx, filter)
+	deletedCount, err := file.db.Collection("files").DeleteOne(ctx, filter)
 	if err != nil {
 		return err
 	}
@@ -150,34 +121,7 @@ func (file *FileModel) DeleteFileInstance(id primitive.ObjectID) error {
 	return nil
 }
 
-func (file *FileModel) GetFileAddress(id primitive.ObjectID) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id": id,
-	}
-
-	projection := bson.M{
-		"address": 1,
-	}
-
-	fileOptions := options.FindOne()
-	fileOptions.SetProjection(projection)
-
-	var fileInstance File
-	if err := file.db.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, errors.New("file with this Id does not exist")
-		}
-
-		return nil, err
-	}
-
-	return []byte(fileInstance.Address), nil
-}
-
-func (file *FileModel) RenameFileInstance(id primitive.ObjectID, newName []byte) error {
+func (file *FileModel) Rename(id primitive.ObjectID, newName []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -191,7 +135,7 @@ func (file *FileModel) RenameFileInstance(id primitive.ObjectID, newName []byte)
 		},
 	}
 
-	updateResult, err := file.db.Collection(FileCollectionName).UpdateOne(ctx, filter, update)
+	updateResult, err := file.db.Collection("files").UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
@@ -207,7 +151,7 @@ func (file *FileModel) RenameFileInstance(id primitive.ObjectID, newName []byte)
 	return nil
 }
 
-func (file *FileModel) IsFileExpired(id primitive.ObjectID) (bool, error) {
+func (file *FileModel) IsExpired(id primitive.ObjectID) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -223,7 +167,7 @@ func (file *FileModel) IsFileExpired(id primitive.ObjectID) (bool, error) {
 	fileOptions.SetProjection(projection)
 
 	var fileInstance File
-	if err := file.db.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
+	if err := file.db.Collection("files").FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
 		return false, err
 	}
 
@@ -238,7 +182,7 @@ func (file *FileModel) IsFileExpired(id primitive.ObjectID) (bool, error) {
 	return false, nil
 }
 
-func (file *FileModel) GetFileOwnerId(id primitive.ObjectID) ([]byte, error) {
+func (file *FileModel) GetOwnerIdById(id primitive.ObjectID) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -254,9 +198,63 @@ func (file *FileModel) GetFileOwnerId(id primitive.ObjectID) ([]byte, error) {
 	fileOptions.SetProjection(projection)
 
 	var fileInstance File
-	if err := file.db.Collection(FileCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
+	if err := file.db.Collection("files").FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
 		return nil, err
 	}
 
 	return []byte(fileInstance.Address), nil
+}
+
+func (file *FileModel) GetDiskAddressById(id primitive.ObjectID) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	projection := bson.M{
+		"address": 1,
+	}
+
+	fileOptions := options.FindOne()
+	fileOptions.SetProjection(projection)
+
+	var fileInstance File
+	if err := file.db.Collection("files").FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, errors.New("file with this Id does not exist")
+		}
+
+		return nil, err
+	}
+
+	return []byte(fileInstance.Address), nil
+}
+
+func (file *FileModel) GetIdByShortUrl(shortUrl string) (primitive.ObjectID, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"short_url": shortUrl,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
+
+	var fileInstance File
+	if err := file.db.Collection("files").FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return primitive.NilObjectID, errors.New("file with this short url does not exist")
+		}
+
+		return primitive.NilObjectID, err
+	}
+
+	return fileInstance.Id, nil
 }

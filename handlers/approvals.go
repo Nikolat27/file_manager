@@ -29,7 +29,7 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isRequired, err := handler.Models.File.CheckFileRequiresApproval(fileObjectId)
+	isRequired, err := handler.Models.FileSettings.IsApprovalRequired(fileObjectId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -52,7 +52,7 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := handler.Models.Approval.CreateApprovalInstance(fileObjectId, ownerObjectId, userObjectId, input.Reason); err != nil {
+	if _, err := handler.Models.Approval.Create(fileObjectId, ownerObjectId, userObjectId, input.Reason); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -89,12 +89,12 @@ func (handler *Handler) ChangeApprovalStatus(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := handler.Models.Approval.ValidateApprovalOwner(approvalObjectId, userObjectId); err != nil {
+	if err := handler.Models.Approval.ValidateOwner(approvalObjectId, userObjectId); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := handler.Models.Approval.UpdateApprovalStatus(approvalObjectId, input.Status); err != nil {
+	if err := handler.Models.Approval.UpdateStatus(approvalObjectId, input.Status); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

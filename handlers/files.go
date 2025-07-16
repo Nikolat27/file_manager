@@ -93,13 +93,13 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 
 	encodedSalt := hex.EncodeToString(salt)
 
-	fileId, err := handler.Models.File.CreateFileInstance(userId, newFileName, address, shortFileUrl, expireAt)
+	fileId, err := handler.Models.File.Create(userId, newFileName, address, shortFileUrl, expireAt)
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR creating file instance: %s", err).Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := handler.Models.FileSettings.CreateSettingInstance(fileId, encodedSalt, encodedPasswordHash, maxDownloads, false, approvable); err != nil {
+	if err := handler.Models.FileSettings.Create(fileId, encodedSalt, encodedPasswordHash, maxDownloads, false, approvable); err != nil {
 		http.Error(w, fmt.Errorf("ERROR creating file share setting instance: %s", err).Error(), http.StatusBadRequest)
 		return
 	}
@@ -128,7 +128,7 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, err := handler.Models.File.GetFilesInstances(userId, pageNumber, pageLimit)
+	file, err := handler.Models.File.GetAll(userId, pageNumber, pageLimit)
 
 	data, err := json.MarshalIndent(file, "", "\t")
 	w.Write(data)
@@ -154,14 +154,14 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	
-	fileId, err := handler.Models.File.GetFileIdByShortUrl(fileShortUrl)
+	fileId, err := handler.Models.File.GetIdByShortUrl(fileShortUrl)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Check if the fileShareSetting requires a password; alert if needed.
-	requirePassword, err := handler.Models.FileSettings.RequirePassword(fileId)
+	requirePassword, err := handler.Models.FileSettings.IsPasswordRequired(fileId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -172,7 +172,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileShareSetting, err := handler.Models.FileSettings.GetFileSettings(fileId)
+	fileShareSetting, err := handler.Models.FileSettings.GetOne(fileId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -186,7 +186,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	file, err := handler.Models.File.GetFileInstance(fileId)
+	file, err := handler.Models.File.GetOne(fileId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -219,7 +219,7 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 
 	fileObjectId, err := utils.ConvertStringToObjectID(fileId)
 
-	address, err := handler.Models.File.GetFileAddress(fileObjectId)
+	address, err := handler.Models.File.GetDiskAddressById(fileObjectId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -230,7 +230,7 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.Models.File.DeleteFileInstance(fileObjectId); err != nil {
+	if err := handler.Models.File.Delete(fileObjectId); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -265,7 +265,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.Models.File.RenameFileInstance(fileObjectId, []byte(input.Name)); err != nil {
+	if err := handler.Models.File.Rename(fileObjectId, []byte(input.Name)); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -289,7 +289,7 @@ func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId 
 		return nil
 	}
 	
-	status, err := handler.Models.Approval.CheckUserApprovalStatus(fileId, userObjectId)
+	status, err := handler.Models.Approval.CheckStatus(fileId, userObjectId)
 	if err != nil {
 		return err
 	}
