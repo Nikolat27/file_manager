@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
@@ -31,22 +32,12 @@ func GetPaginationParams(r *http.Request) (int64, int64, error) {
 	return intPage, intLimit, nil
 }
 
-func ReadFileId(r *http.Request) (string, error) {
-	params := httprouter.ParamsFromContext(r.Context())
-	fileId := params.ByName("file_id")
-	if fileId == "" {
-		return "", errors.New("file id is missing")
+func ParseIdParam(ctx context.Context) (string, error) {
+	params := httprouter.ParamsFromContext(ctx)
+	id := params.ByName("id")
+	if id == "" {
+		return "", errors.New("id is missing")
 	}
 
-	return fileId, nil
-}
-
-func ReadShortUrlParams(r *http.Request) ([]byte, error) {
-	params := httprouter.ParamsFromContext(r.Context())
-	fileId := params.ByName("file_short_url")
-	if fileId == "" {
-		return nil, errors.New("file short url is missing")
-	}
-
-	return []byte(fileId), nil
+	return id, nil
 }
