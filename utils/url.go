@@ -4,25 +4,8 @@ import (
 	"errors"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
-	"os"
 	"strconv"
-	"strings"
 )
-
-func GetStaticFileUrl(url string) (string, error) {
-	staticUrl := os.Getenv("STATIC_FILES_URL")
-	if staticUrl == "" {
-		return "", errors.New("BACKEND_URL env variable is missing")
-	}
-
-	if url == "" {
-		return "", errors.New("url parameter is empty")
-	}
-
-	url = strings.Trim(url, "/") // convert "/hi/" to "hi"
-	
-	return staticUrl + url, nil
-}
 
 func GetPaginationParams(r *http.Request) (int64, int64, error) {
 	page := r.URL.Query().Get("page")
