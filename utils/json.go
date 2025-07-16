@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-func ParseJsonData(reqBody io.ReadCloser, maxBytes int64, input any) error {
+func ParseJson(reqBody io.ReadCloser, maxBytes int64, input any) error {
 	body, err := io.ReadAll(io.LimitReader(reqBody, maxBytes))
 	if err != nil {
 		return err
