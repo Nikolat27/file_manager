@@ -69,7 +69,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := utils.ConvertStringToObjectID(payload.UserId)
+	userId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -122,7 +122,7 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := utils.ConvertStringToObjectID(payload.UserId)
+	userId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
 		http.Error(w, fmt.Errorf("ERROR checking auth: %s", err).Error(), http.StatusUnauthorized)
 		return
@@ -148,7 +148,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 
 	// Optionally decode the JSON input for password (only POST requests)
 	if r.Method == "POST" {
-		if err := utils.ParseJsonData(r.Body, 1000, &input); err != nil {
+		if err := utils.ParseJson(r.Body, 1000, &input); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -217,7 +217,7 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileObjectId, err := utils.ConvertStringToObjectID(fileId)
+	fileObjectId, err := utils.ToObjectID(fileId)
 
 	address, err := handler.Models.File.GetDiskAddressById(fileObjectId)
 	if err != nil {
@@ -245,7 +245,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileObjectId, err := utils.ConvertStringToObjectID(fileId)
+	fileObjectId, err := utils.ToObjectID(fileId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -255,7 +255,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 		Name string `json:"new_name"`
 	}
 
-	if err := utils.ParseJsonData(r.Body, 1000, &input); err != nil {
+	if err := utils.ParseJson(r.Body, 1000, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -279,7 +279,7 @@ func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId 
 		return errors.New("this file needs Approval, You must Logged in to send your approval")
 	}
 
-	userObjectId, err := utils.ConvertStringToObjectID(payload.UserId)
+	userObjectId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
 		return err
 	}

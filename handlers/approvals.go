@@ -18,12 +18,12 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		Reason  string `json:"reason"`
 	}
 
-	if err := utils.ParseJsonData(r.Body, 10000, &input); err != nil {
+	if err := utils.ParseJson(r.Body, 10000, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	
-	fileObjectId, err := utils.ConvertStringToObjectID(input.FileId)
+	fileObjectId, err := utils.ToObjectID(input.FileId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -40,13 +40,13 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ownerObjectId, err := utils.ConvertStringToObjectID(input.OwnerId)
+	ownerObjectId, err := utils.ToObjectID(input.OwnerId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	userObjectId, err := utils.ConvertStringToObjectID(payload.UserId)
+	userObjectId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -72,18 +72,18 @@ func (handler *Handler) ChangeApprovalStatus(w http.ResponseWriter, r *http.Requ
 		Status     string `json:"status"`
 	}
 
-	if err := utils.ParseJsonData(r.Body, 10000, &input); err != nil {
+	if err := utils.ParseJson(r.Body, 10000, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	userObjectId, err := utils.ConvertStringToObjectID(payload.UserId)
+	userObjectId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	approvalObjectId, err := utils.ConvertStringToObjectID(input.ApprovalId)
+	approvalObjectId, err := utils.ToObjectID(input.ApprovalId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
