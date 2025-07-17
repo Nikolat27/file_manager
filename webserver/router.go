@@ -41,6 +41,7 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 	router.Router.HandlerFunc("PUT", "/api/file/rename/:id", handler.RenameFile)
 	router.Router.HandlerFunc("GET", "/api/file/get/:id", handler.GetFile)
 	router.Router.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
+	router.Router.HandlerFunc("POST", "/api/file/search", handler.SearchFiles)
 
 	// File Settings
 	router.Router.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)

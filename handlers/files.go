@@ -237,6 +237,54 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, "file`s name changed successfully")
 }
 
+func (handler *Handler) SearchFiles(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	var input struct {
+		SearchText string `json:"search_text"`
+		Page       int64  `json:"page"`
+		PageLimit  int64  `json:"page_limit"`
+	}
+
+	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if input.Page <= 0 {
+		input.Page = 1
+	}
+
+	if input.PageLimit <= 0 || input.PageLimit > 20 {
+		input.PageLimit = 6
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// Search through files names
+	files, err := handler.Models.File.Search(userObjectId, input.SearchText, input.Page, input.PageLimit)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	data, err := json.MarshalIndent(files, "", "\t")
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.WriteJSON(w, data)
+}
+
 func (handler *Handler) uploadFile(r *http.Request, maxUploadSize int64, userId, userPlan string) (string, int64, error) {
 	file, err := utils.ReadFile(r, maxUploadSize)
 	if err != nil {

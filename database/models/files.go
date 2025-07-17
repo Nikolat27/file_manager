@@ -149,6 +149,40 @@ func (file *FileModel) Rename(id primitive.ObjectID, newName []byte) error {
 	return nil
 }
 
+func (file *FileModel) Search(ownerId primitive.ObjectID, name string, page, pageSize int64) ([]File, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"owner_id": ownerId,
+		"name": bson.M{
+			"$regex": name, "$options": "i", // case insensitive
+		},
+	}
+
+	projection := bson.M{
+		"hashed_password": 0,
+		"salt":            0,
+	}
+
+	findOptions := options.Find()
+	findOptions.SetProjection(projection)
+	findOptions.SetSkip((page - 1) * pageSize)
+	findOptions.SetLimit(pageSize)
+
+	cursor, err := file.db.Collection("files").Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	var files []File
+	if err := cursor.All(ctx, &files); err != nil {
+		return nil, err
+	}
+
+	return files, nil
+}
+
 func (file *FileModel) IsExpired(id primitive.ObjectID) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
