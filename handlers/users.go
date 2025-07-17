@@ -4,6 +4,8 @@ import (
 	"errors"
 	"file_manager/utils"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
+	"net/http"
 )
 
 const (
@@ -12,6 +14,45 @@ const (
 	PlusPlanMaxStorageBytes    int64 = 100 * GB
 	PremiumPlanMaxStorageBytes int64 = 1024 * GB
 )
+
+func (handler *Handler) UpdateUserPlan(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	var input struct {
+		Plan string `json:"plan"`
+	}
+
+	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := validatePlan(input.Plan); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	updates := bson.M{
+		"plan": input.Plan,
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := handler.Models.User.Update(userObjectId, updates); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "user`s plan updated successfully")
+}
 
 func (handler *Handler) IsUserEligibleToUpload(userId, userPlan string, fileSize int64) (int64, error) {
 	totalStorage, err := getTotalStorage(userPlan)
@@ -62,5 +103,13 @@ func getTotalStorage(plan string) (int64, error) {
 		return 0, errors.New("plan is missing")
 	default:
 		return 0, fmt.Errorf("invalid plan: %s", plan)
+	}
+}
+
+func validatePlan(plan string) error {
+	if plan == "free" || plan == "plus" || plan == "premium" {
+		return nil
+	} else {
+		return fmt.Errorf("plan is invalid: %s", plan)
 	}
 }

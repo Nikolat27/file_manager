@@ -6,6 +6,8 @@ import (
 	"net/http"
 )
 
+// not going to use it for a while...
+
 //func CheckAuth(handler *handlers.Handler, httpHandler func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
 //	return func(w http.ResponseWriter, r *http.Request) {
 //		value, err := getToken(w, r, "authToken")
@@ -34,7 +36,7 @@ func CheckAuth(handler *handlers.Handler, httpHandler func(w http.ResponseWriter
 			http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
 			return
 		}
-		
+
 		httpHandler(w, r)
 	}
 }

@@ -31,20 +31,23 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 	router.Router.HandlerFunc("POST", "/api/auth/register", handler.Register)
 	router.Router.HandlerFunc("POST", "/api/auth/login", handler.Login)
 
+	// User
+	router.Router.HandlerFunc("PUT", "/api/user/plan/change", handler.UpdateUserPlan)
+
 	// File
 	router.Router.HandlerFunc("POST", "/api/file/create", handler.CreateFile)
 	router.Router.HandlerFunc("GET", "/api/file/get", handler.GetFiles)
 	router.Router.HandlerFunc("DELETE", "/api/file/delete/:id", handler.DeleteFile)
-	router.Router.HandlerFunc("POST", "/api/file/rename/:id", handler.RenameFile)
+	router.Router.HandlerFunc("PUT", "/api/file/rename/:id", handler.RenameFile)
 	router.Router.HandlerFunc("GET", "/api/file/get/:id", handler.GetFile)
 	router.Router.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
 
 	// File Settings
 	router.Router.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)
-	
+
 	// Approval
 	router.Router.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
-	router.Router.HandlerFunc("POST", "/api/approval/status", handler.ChangeApprovalStatus)
+	router.Router.HandlerFunc("PUT", "/api/approval/status", handler.UpdateApproval)
 
 }
 

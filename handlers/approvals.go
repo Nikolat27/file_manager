@@ -61,7 +61,7 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, "Your Approval request has been sent successfully")
 }
 
-func (handler *Handler) ChangeApprovalStatus(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) UpdateApproval(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
 		utils.WriteError(w, http.StatusUnauthorized, err)

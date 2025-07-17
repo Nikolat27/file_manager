@@ -44,7 +44,7 @@ func (srv *Server) Run() error {
 }
 
 func (srv *Server) Close() error {
-	fmt.Println("project closed successfully")
+	fmt.Println("project is closing...")
 	return srv.Server.Close()
 }
 
