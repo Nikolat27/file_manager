@@ -34,8 +34,8 @@ func New() (*PasetoMaker, error) {
 	return maker, nil
 }
 
-func (maker *PasetoMaker) CreateToken(username string, duration time.Duration) (string, error) {
-	payload, err := NewPayload(username, duration)
+func (maker *PasetoMaker) CreateToken(username, userId, userPlan string, duration time.Duration) (string, error) {
+	payload, err := NewPayload(username, userId, userPlan, duration)
 	if err != nil {
 		return "", err
 	}

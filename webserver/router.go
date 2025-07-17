@@ -3,6 +3,7 @@ package webserver
 import (
 	"file_manager/handlers"
 	"github.com/julienschmidt/httprouter"
+	"net/http"
 )
 
 type Router struct {
@@ -22,7 +23,33 @@ func NewRouter(handler *handlers.Handler) *Router {
 }
 
 func (router *Router) initRoutes(handler *handlers.Handler) {
+	// Static Files
+	staticFilesHandler := getStaticFilesHandler()
+	router.Router.Handler("GET", "/static/*filepath", staticFilesHandler)
+
 	// Auth
 	router.Router.HandlerFunc("POST", "/api/auth/register", handler.Register)
 	router.Router.HandlerFunc("POST", "/api/auth/login", handler.Login)
+
+	// File
+	router.Router.HandlerFunc("POST", "/api/file/create", handler.CreateFile)
+	router.Router.HandlerFunc("GET", "/api/file/get", handler.GetFiles)
+	router.Router.HandlerFunc("DELETE", "/api/file/delete/:id", handler.DeleteFile)
+	router.Router.HandlerFunc("POST", "/api/file/rename/:id", handler.RenameFile)
+	router.Router.HandlerFunc("GET", "/api/file/get/:id", handler.GetFile)
+	router.Router.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
+
+	// File Settings
+	router.Router.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)
+	
+	// Approval
+	router.Router.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
+	router.Router.HandlerFunc("POST", "/api/approval/status", handler.ChangeApprovalStatus)
+
+}
+
+func getStaticFilesHandler() http.Handler {
+	dir := http.Dir("./")
+	fileServer := http.FileServer(dir)
+	return http.StripPrefix("/static/", fileServer)
 }
