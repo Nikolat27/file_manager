@@ -39,6 +39,9 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 	router.Router.HandlerFunc("GET", "/api/file/get/:id", handler.GetFile)
 	router.Router.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
 
+	// File Settings
+	router.Router.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)
+	
 	// Approval
 	router.Router.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
 	router.Router.HandlerFunc("POST", "/api/approval/status", handler.ChangeApprovalStatus)

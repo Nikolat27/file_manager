@@ -41,7 +41,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	expireAt := getExpirationDate(payload.UserPlan)
-	
+
 	if _, err = handler.Models.File.Create(userId, newFileName, address, expireAt); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file instance: %w", err))
 		return
@@ -103,14 +103,14 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	fileId, err := handler.Models.File.GetIdByShortUrl(fileShortUrl)
+	
+	fileId, err := handler.Models.FileSettings.GetFileIdByUrl(fileShortUrl)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	// Check if the fileShareSetting requires a password; alert if needed.
+	// Check if the fileShareSetting requires a password. alert if needed.
 	requirePassword, err := handler.Models.FileSettings.IsPasswordRequired(fileId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)

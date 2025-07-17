@@ -172,7 +172,7 @@ func (file *FileModel) IsExpired(id primitive.ObjectID) (bool, error) {
 	if fileInstance.ExpireAt.IsZero() {
 		return false, nil
 	}
-	
+
 	if time.Now().After(fileInstance.ExpireAt) {
 		return true, nil
 	}
@@ -230,29 +230,29 @@ func (file *FileModel) GetDiskAddressById(id primitive.ObjectID) ([]byte, error)
 	return []byte(fileInstance.Address), nil
 }
 
-func (file *FileModel) GetIdByShortUrl(shortUrl string) (primitive.ObjectID, error) {
+func (file *FileModel) IsExist(id primitive.ObjectID) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	filter := bson.M{
-		"short_url": shortUrl,
+		"_id": id,
 	}
 
 	projection := bson.M{
 		"_id": 1,
 	}
 
-	findOptions := options.FindOne()
-	findOptions.SetProjection(projection)
+	fileOptions := options.FindOne()
+	fileOptions.SetProjection(projection)
 
 	var fileInstance File
-	if err := file.db.Collection("files").FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
+	if err := file.db.Collection("files").FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return primitive.NilObjectID, errors.New("file with this short url does not exist")
+			return false, nil
 		}
 
-		return primitive.NilObjectID, err
+		return false, err
 	}
 
-	return fileInstance.Id, nil
+	return true, nil
 }

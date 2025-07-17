@@ -37,17 +37,17 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	hashedPassword := utils.Hash256([]byte(input.Password), salt)
 	encodedHash := hex.EncodeToString(hashedPassword[:])
 	encodedSalt := hex.EncodeToString(salt)
-	
+
 	if _, err = handler.Models.User.GetByUsername(input.Username); err == nil {
 		utils.WriteError(w, http.StatusBadRequest, errors.New("this username is taken already"))
 		return
 	}
-	
+
 	if !errors.Is(err, mongo.ErrNoDocuments) {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("fetch user: %w", err))
 		return
 	}
-	
+
 	if _, err = handler.Models.User.Create(input.Username, DefaultPlan, encodedSalt, encodedHash); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("creating user instance: %w", err))
 		return
@@ -89,7 +89,7 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusUnauthorized, errors.New("invalid username or password"))
 		return
 	}
-
+	
 	token, err := handler.PasetoMaker.CreateToken(user.Username, user.Id.Hex(), user.Plan, 24*time.Hour)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("error creating token: %w", err))
