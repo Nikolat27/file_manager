@@ -7,6 +7,7 @@ import (
 	"file_manager/utils"
 	"fmt"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"time"
@@ -23,18 +24,18 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 
-	newFileName := r.FormValue("file_name")
-	if newFileName == "" {
-		newFileName = uuid.New().String()
+	fileName := r.FormValue("file_name")
+	if fileName == "" {
+		fileName = uuid.New().String()
 	}
 
-	address, err := utils.UploadFileToDisk("file", payload.UserId, r)
+	fileAddress, totalUploadSize, err := handler.uploadFile(r, maxUploadSize, payload.UserId, payload.UserPlan)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	userId, err := utils.ToObjectID(payload.UserId)
+	userObjectId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -42,12 +43,17 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 
 	expireAt := getExpirationDate(payload.UserPlan)
 
-	if _, err = handler.Models.File.Create(userId, newFileName, address, expireAt); err != nil {
+	if _, err := handler.Models.File.Create(userObjectId, fileName, fileAddress, expireAt); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file instance: %w", err))
 		return
 	}
 
-	utils.WriteJSON(w, "file created successfully")
+	if err := handler.Models.User.Update(userObjectId, bson.M{"total_upload_size": totalUploadSize}); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("updating user instance: %w", err))
+		return
+	}
+
+	utils.WriteJSON(w, "file is uploading...")
 }
 
 // GetFiles -> Returns List
@@ -103,7 +109,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	
+
 	fileId, err := handler.Models.FileSettings.GetFileIdByUrl(fileShortUrl)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -224,6 +230,26 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteJSON(w, "file`s name changed successfully")
+}
+
+func (handler *Handler) uploadFile(r *http.Request, maxUploadSize int64, userId, userPlan string) (string, int64, error) {
+	file, err := utils.ReadFile(r, maxUploadSize)
+	if err != nil {
+		return "", 0, err
+	}
+	defer file.File.Close()
+
+	totalUsedStorage, err := handler.IsUserEligibleToUpload(userId, userPlan, file.Size)
+	if err != nil {
+		return "", 0, err
+	}
+
+	fileAddress, err := file.UploadToDisk(userId)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return fileAddress, totalUsedStorage, nil
 }
 
 func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId primitive.ObjectID) error {
