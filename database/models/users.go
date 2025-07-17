@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -15,12 +16,13 @@ type UserModel struct {
 }
 
 type User struct {
-	Id             primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
-	Username       string             `json:"username" bson:"username"`
-	Plan           string             `json:"plan"`
-	Salt           string             `json:"salt" bson:"salt"`
-	HashedPassword string             `json:"hashed_password" bson:"hashed_password"`
-	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
+	Id              primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	Username        string             `json:"username" bson:"username"`
+	Plan            string             `json:"plan"`
+	TotalUploadSize int64              `json:"total_upload_size" bson:"total_upload_size"`
+	Salt            string             `json:"salt" bson:"salt"`
+	HashedPassword  string             `json:"hashed_password" bson:"hashed_password"`
+	CreatedAt       time.Time          `json:"created_at" bson:"created_at"`
 }
 
 const userCollectionName = "users"
@@ -83,14 +85,12 @@ func (user *UserModel) GetByUsername(username string) (*User, error) {
 	return &userInstance, nil
 }
 
-func (user *UserModel) UpdatePlan(id primitive.ObjectID, newPlan string) error {
+func (user *UserModel) Update(id primitive.ObjectID, updates bson.M) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	update := bson.M{
-		"$set": bson.M{
-			"plan": newPlan,
-		},
+		"$set": updates,
 	}
 
 	result, err := user.db.Collection(userCollectionName).UpdateByID(ctx, id, update)
@@ -111,4 +111,27 @@ func (user *UserModel) UpdatePlan(id primitive.ObjectID, newPlan string) error {
 	}
 
 	return nil
+}
+
+func (user *UserModel) GetUsedStorage(id primitive.ObjectID) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	projection := bson.M{
+		"total_upload_size": 1,
+	}
+
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
+
+	var userInstance User
+	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter, findOptions).Decode(&userInstance); err != nil {
+		return 0, err
+	}
+
+	return userInstance.TotalUploadSize, nil
 }
