@@ -194,6 +194,11 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := handler.Models.FileSettings.Delete(fileObjectId); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
 	utils.WriteJSON(w, "file deleted successfully")
 }
 

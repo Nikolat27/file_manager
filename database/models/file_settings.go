@@ -74,6 +74,26 @@ func (file *FileSettingModel) Get(fileId primitive.ObjectID) (*FileSettings, err
 	return &fileInstance, nil
 }
 
+func (file *FileSettingModel) Delete(fileId primitive.ObjectID) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"file_id": fileId,
+	}
+
+	result, err := file.db.Collection("file_settings").DeleteOne(ctx, filter)
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return errors.New("setting with this file id does not exist")
+	}
+
+	return nil
+}
+
 func (file *FileSettingModel) GetFileIdByUrl(shortUrl string) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -159,9 +179,9 @@ func (file *FileSettingModel) IsExist(fileId primitive.ObjectID) (bool, error) {
 	var fileInstance FileSettings
 	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return false, nil 
+			return false, nil
 		}
-		return false, err 
+		return false, err
 	}
 
 	return true, nil
