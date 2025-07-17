@@ -31,7 +31,7 @@ func (handler *Handler) UpdateUserPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validatePlan(input.Plan); err != nil {
+	if err := utils.ValidatePlan(input.Plan); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -103,13 +103,5 @@ func getTotalStorage(plan string) (int64, error) {
 		return 0, errors.New("plan is missing")
 	default:
 		return 0, fmt.Errorf("invalid plan: %s", plan)
-	}
-}
-
-func validatePlan(plan string) error {
-	if plan == "free" || plan == "plus" || plan == "premium" {
-		return nil
-	} else {
-		return fmt.Errorf("plan is invalid: %s", plan)
 	}
 }

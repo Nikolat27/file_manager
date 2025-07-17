@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"file_manager/utils"
@@ -10,7 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
-	"time"
 )
 
 func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
@@ -20,7 +18,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	maxUploadSize := getMaxUploadSize(payload.UserPlan)
+	maxUploadSize := utils.GetMaxUploadSize(payload.UserPlan)
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 
@@ -41,7 +39,7 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expireAt := getExpirationDate(payload.UserPlan)
+	expireAt := utils.GetExpirationDate(payload.UserPlan)
 
 	if _, err := handler.Models.File.Create(userObjectId, fileName, fileAddress, expireAt); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file instance: %w", err))
@@ -136,7 +134,7 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 
 	// If password is required and provided, validate it
 	if requirePassword && input.RawPassword != "" {
-		if err := checkFilePassword([]byte(fileShareSetting.HashedPassword), []byte(fileShareSetting.Salt), []byte(input.RawPassword)); err != nil {
+		if err := utils.CheckFilePassword([]byte(fileShareSetting.HashedPassword), []byte(fileShareSetting.Salt), []byte(input.RawPassword)); err != nil {
 			utils.WriteError(w, http.StatusBadRequest, err)
 			return
 		}
@@ -335,48 +333,4 @@ func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId 
 	}
 
 	return nil
-}
-
-func checkFilePassword(hashedPassword, salt, rawPassword []byte) error {
-	decodedHashPassword, err := hex.DecodeString(string(hashedPassword))
-	if err != nil {
-		return err
-	}
-
-	decodedSalt, err := hex.DecodeString(string(salt))
-	if err != nil {
-		return err
-	}
-
-	if !utils.ValidateHash(rawPassword, decodedHashPassword, decodedSalt) {
-		return errors.New("password is invalid")
-	}
-
-	return nil
-}
-
-func getMaxUploadSize(plan string) int64 {
-	switch plan {
-	case "free":
-		return 100 << 20 // 100 MB
-	case "plus":
-		return 2000 << 20 // 2 GB
-	case "premium":
-		return 20000 << 20 // 20 GB
-	default:
-		return 100 << 20 // default 100 MB
-	}
-}
-
-func getExpirationDate(plan string) time.Time {
-	switch plan {
-	case "free":
-		return time.Now().Add(7 * time.Hour * 24) // 7 Days
-	case "plus":
-		return time.Now().Add(30 * time.Hour * 24) // 30 Days
-	case "premium":
-		return time.Now().Add(180 * time.Hour * 24) // 180 Days
-	default:
-		return time.Now().Add(7 * time.Hour * 24) // 7 Days
-	}
 }

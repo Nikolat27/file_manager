@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"io"
 	"mime/multipart"
@@ -97,4 +98,22 @@ func makeDir(uploadDir string) error {
 
 func DeleteFileFromDisk(address []byte) error {
 	return os.Remove(string(address))
+}
+
+func CheckFilePassword(hashedPassword, salt, rawPassword []byte) error {
+	decodedHashPassword, err := hex.DecodeString(string(hashedPassword))
+	if err != nil {
+		return err
+	}
+
+	decodedSalt, err := hex.DecodeString(string(salt))
+	if err != nil {
+		return err
+	}
+
+	if !ValidateHash(rawPassword, decodedHashPassword, decodedSalt) {
+		return errors.New("password is invalid")
+	}
+
+	return nil
 }
