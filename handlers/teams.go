@@ -130,8 +130,8 @@ func (handler *Handler) DeleteTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !slices.Contains(teamInstance.Admins, userObjectId) {
-		utils.WriteError(w, http.StatusBadRequest, "only the owner of the team can delete it")
+	if teamInstance.OwnerId != userObjectId {
+		utils.WriteError(w, http.StatusBadRequest, "only the team owner can delete it")
 		return
 	}
 
@@ -139,7 +139,7 @@ func (handler *Handler) DeleteTeam(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
-	
+
 	utils.WriteJSON(w, "team deleted successfully")
 }
 
