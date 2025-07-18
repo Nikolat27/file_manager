@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -11,19 +12,18 @@ import (
 	"slices"
 )
 
-var allowedTypes = []string{"image/jpeg", "image/png", "application/zip"}
-
 type UploadedFile struct {
 	File multipart.File
 	Size int64
 	Name string
 }
 
-func ReadFile(r *http.Request, maxMemory int64) (*UploadedFile, error) {
+func ReadFile(r *http.Request, maxMemory int64, allowedTypes []string) (*UploadedFile, error) {
 	if err := r.ParseMultipartForm(maxMemory); err != nil {
 		return nil, err
 	}
 
+	// getting the file (from http)
 	file, handler, err := r.FormFile("file")
 	if err != nil {
 		return nil, err
@@ -35,15 +35,14 @@ func ReadFile(r *http.Request, maxMemory int64) (*UploadedFile, error) {
 		Name: handler.Filename,
 	}
 
-	if err := uploadedFile.validateFileFormat(); err != nil {
+	if err := uploadedFile.validateFileFormat(allowedTypes); err != nil {
 		return nil, err
 	}
 
 	return uploadedFile, nil
 }
 
-func (file *UploadedFile) UploadToDisk(userId string) (string, error) {
-	uploadDir := "uploads/user_files/" + userId + "/"
+func (file *UploadedFile) UploadToDisk(uploadDir string) (string, error) {
 	if err := makeDir(uploadDir); err != nil {
 		return "", err
 	}
@@ -67,7 +66,7 @@ func (file *UploadedFile) generateFileName() string {
 	return randomStr + file.Name
 }
 
-func (file *UploadedFile) validateFileFormat() error {
+func (file *UploadedFile) validateFileFormat(allowedTypes []string) error {
 	// Read first 512 bytes
 	header := make([]byte, 512)
 	n, err := file.File.Read(header)
@@ -77,7 +76,7 @@ func (file *UploadedFile) validateFileFormat() error {
 
 	contentType := http.DetectContentType(header[:n])
 	if !slices.Contains(allowedTypes, contentType) {
-		return errors.New("invalid file type: " + contentType)
+		return fmt.Errorf("invalid file type: %s. Must be in :%s", contentType, allowedTypes)
 	}
 
 	// Reset file pointer to the beginning for further reading

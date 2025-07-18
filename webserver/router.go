@@ -50,6 +50,9 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 	router.Router.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
 	router.Router.HandlerFunc("PUT", "/api/approval/status", handler.UpdateApproval)
 
+	
+	// Team
+	router.Router.HandlerFunc("POST", "/api/team/create", handler.CreateTeam)
 }
 
 func getStaticFilesHandler() http.Handler {

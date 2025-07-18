@@ -284,10 +284,13 @@ func (handler *Handler) SearchFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) uploadFile(r *http.Request, maxUploadSize int64, userId, userPlan string) (string, int64, error) {
-	file, err := utils.ReadFile(r, maxUploadSize)
+	allowedTypes := []string{"image/jpeg", "image/png", "application/zip"}
+
+	file, err := utils.ReadFile(r, maxUploadSize, allowedTypes)
 	if err != nil {
 		return "", 0, err
 	}
+	
 	defer file.File.Close()
 
 	totalUsedStorage, err := handler.IsUserEligibleToUpload(userId, userPlan, file.Size)
@@ -295,12 +298,16 @@ func (handler *Handler) uploadFile(r *http.Request, maxUploadSize int64, userId,
 		return "", 0, err
 	}
 
-	fileAddress, err := file.UploadToDisk(userId)
+	fileAddress, err := file.UploadToDisk(getUploadDir(userId))
 	if err != nil {
 		return "", 0, err
 	}
 
 	return fileAddress, totalUsedStorage, nil
+}
+
+func getUploadDir(userId string) string {
+	return "uploads/user_files/" + userId + "/"
 }
 
 func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId primitive.ObjectID) error {
