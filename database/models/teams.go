@@ -46,6 +46,7 @@ func (team *TeamModel) Create(id, ownerId primitive.ObjectID, name, description,
 		OwnerId:     ownerId,
 		Plan:        "free",
 		Admins:      []primitive.ObjectID{ownerId},
+		Users:       []primitive.ObjectID{ownerId},
 	}
 
 	newId, err := team.db.Collection("teams").InsertOne(ctx, newTeam)

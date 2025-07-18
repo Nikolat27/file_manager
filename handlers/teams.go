@@ -89,7 +89,7 @@ func (handler *Handler) GetTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if slices.Contains(teamInstance.Users, userObjectId) {
+	if !slices.Contains(teamInstance.Users, userObjectId) {
 		utils.WriteError(w, http.StatusBadRequest, "you are not member of this team")
 		return
 	}
