@@ -105,6 +105,30 @@ func (team *TeamModel) Update(id primitive.ObjectID, updates bson.M) error {
 	return nil
 }
 
+func (team *TeamModel) Delete(id primitive.ObjectID) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	result, err := team.db.Collection("teams").DeleteOne(ctx, filter)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return errors.New("team with this Id does not exist")
+		}
+
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return errors.New("can`t delete this team...")
+	}
+	
+	return nil
+}
+
 func (team *TeamModel) ValidateAdmin(id, userId primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

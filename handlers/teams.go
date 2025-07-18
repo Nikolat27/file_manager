@@ -103,6 +103,46 @@ func (handler *Handler) GetTeam(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, data)
 }
 
+func (handler *Handler) DeleteTeam(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+
+	teamIdStr, err := utils.ParseIdParam(r.Context())
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	teamObjectId, err := utils.ToObjectID(teamIdStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	teamInstance, err := handler.Models.Team.Get(teamObjectId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if !slices.Contains(teamInstance.Admins, userObjectId) {
+		utils.WriteError(w, http.StatusBadRequest, "only the owner of the team can delete it")
+		return
+	}
+
+	if err := handler.Models.Team.Delete(teamObjectId); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+	
+	utils.WriteJSON(w, "team deleted successfully")
+}
+
 func (handler *Handler) UploadTeamFile(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {

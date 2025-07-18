@@ -54,6 +54,7 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 	router.Router.HandlerFunc("POST", "/api/team/create", handler.CreateTeam)
 	router.Router.HandlerFunc("POST", "/api/team/file/upload/:id", handler.UploadTeamFile)
 	router.Router.HandlerFunc("GET", "/api/team/get/:id", handler.GetTeam)
+	router.Router.HandlerFunc("DELETE", "/api/team/delete/:id", handler.DeleteTeam)
 }
 
 func getStaticFilesHandler() http.Handler {
