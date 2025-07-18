@@ -35,7 +35,7 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 	router.Router.HandlerFunc("PUT", "/api/user/plan/change", handler.UpdateUserPlan)
 
 	// File
-	router.Router.HandlerFunc("POST", "/api/file/create", handler.CreateFile)
+	router.Router.HandlerFunc("POST", "/api/file/create", handler.UploadUserFile)
 	router.Router.HandlerFunc("GET", "/api/file/get", handler.GetFiles)
 	router.Router.HandlerFunc("DELETE", "/api/file/delete/:id", handler.DeleteFile)
 	router.Router.HandlerFunc("PUT", "/api/file/rename/:id", handler.RenameFile)
@@ -50,9 +50,10 @@ func (router *Router) initRoutes(handler *handlers.Handler) {
 	router.Router.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
 	router.Router.HandlerFunc("PUT", "/api/approval/status", handler.UpdateApproval)
 
-	
 	// Team
 	router.Router.HandlerFunc("POST", "/api/team/create", handler.CreateTeam)
+	router.Router.HandlerFunc("POST", "/api/team/file/upload/:id", handler.UploadTeamFile)
+	router.Router.HandlerFunc("GET", "/api/team/get/:id", handler.GetTeam)
 }
 
 func getStaticFilesHandler() http.Handler {

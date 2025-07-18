@@ -23,7 +23,6 @@ type Team struct {
 	OwnerId     primitive.ObjectID   `json:"owner_id" bson:"owner_id"`
 	Users       []primitive.ObjectID `json:"users" bson:"users"`
 	Admins      []primitive.ObjectID `json:"admins" bson:"admins"`
-	Files       []primitive.ObjectID `json:"files" bson:"files"`
 	StorageUsed int64                `json:"storage_used" bson:"storage_used"`
 	CreatedAt   time.Time            `json:"created_at" bson:"created_at"`
 	UpdatedAt   time.Time            `json:"updated_at" bson:"updated_at"`
@@ -45,6 +44,7 @@ func (team *TeamModel) Create(id, ownerId primitive.ObjectID, name, description,
 		Description: description,
 		AvatarUrl:   avatarUrl,
 		OwnerId:     ownerId,
+		Plan:        "free",
 		Admins:      []primitive.ObjectID{ownerId},
 	}
 
@@ -54,6 +54,54 @@ func (team *TeamModel) Create(id, ownerId primitive.ObjectID, name, description,
 	}
 
 	return newId.InsertedID.(primitive.ObjectID), nil
+}
+
+func (team *TeamModel) Get(id primitive.ObjectID) (*Team, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	var teamInstance Team
+	if err := team.db.Collection("teams").FindOne(ctx, filter).Decode(&teamInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, errors.New("team with this id does not exist")
+		}
+
+		return nil, err
+	}
+
+	return &teamInstance, nil
+}
+
+func (team *TeamModel) Update(id primitive.ObjectID, updates bson.M) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	update := bson.M{
+		"$set": updates,
+	}
+
+	result, err := team.db.Collection("teams").UpdateByID(ctx, id, update)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return errors.New("team with this Id does not exist")
+		}
+
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return errors.New("team with this Id does not exist")
+	}
+
+	if result.ModifiedCount == 0 {
+		return errors.New("did not detect any change")
+	}
+
+	return nil
 }
 
 func (team *TeamModel) ValidateAdmin(id, userId primitive.ObjectID) error {
@@ -81,4 +129,31 @@ func (team *TeamModel) ValidateAdmin(id, userId primitive.ObjectID) error {
 	}
 
 	return nil
+}
+
+func (team *TeamModel) GetUsedStorage(id primitive.ObjectID) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	projection := bson.M{
+		"storage_used": 1,
+	}
+
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
+
+	var teamInstance Team
+	if err := team.db.Collection("teams").FindOne(ctx, filter, findOptions).Decode(&teamInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return 0, errors.New("team with this id does not exist")
+		}
+
+		return 0, err
+	}
+
+	return teamInstance.StorageUsed, nil
 }

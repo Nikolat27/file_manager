@@ -17,6 +17,7 @@ type FileModel struct {
 type File struct {
 	Id        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	OwnerId   primitive.ObjectID `json:"owner_id" bson:"owner_id"`
+	TeamId    primitive.ObjectID `json:"team_id" bson:"team_id"`
 	Name      string             `json:"name" bson:"name"`
 	Address   string             `json:"address" bson:"address"`
 	TotalSize float64            `json:"total_size" bson:"total_size"`
@@ -24,7 +25,7 @@ type File struct {
 	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
 }
 
-func (file *FileModel) Create(ownerId primitive.ObjectID, fileName, address string,
+func (file *FileModel) Create(ownerId, teamId primitive.ObjectID, fileName, address string,
 	expireAt time.Time) (primitive.ObjectID, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -32,6 +33,7 @@ func (file *FileModel) Create(ownerId primitive.ObjectID, fileName, address stri
 
 	newFile := &File{
 		OwnerId:   ownerId,
+		TeamId:    teamId,
 		Name:      fileName,
 		Address:   address,
 		ExpireAt:  expireAt,

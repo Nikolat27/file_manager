@@ -55,7 +55,7 @@ func (handler *Handler) UpdateUserPlan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) IsUserEligibleToUpload(userId, userPlan string, fileSize int64) (int64, error) {
-	totalStorage, err := getTotalStorage(userPlan)
+	totalStorage, err := getUserTotalStorage(userPlan)
 	if err != nil {
 		return 0, err
 	}
@@ -91,7 +91,7 @@ func (handler *Handler) getUsedStorage(userId string) (int64, error) {
 	return handler.Models.User.GetUsedStorage(userObjectId)
 }
 
-func getTotalStorage(plan string) (int64, error) {
+func getUserTotalStorage(plan string) (int64, error) {
 	switch plan {
 	case "free":
 		return FreePlanMaxStorageBytes, nil

@@ -11,14 +11,14 @@ import (
 	"net/http"
 )
 
-func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) UploadUserFile(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
 		utils.WriteError(w, http.StatusUnauthorized, err)
 		return
 	}
 
-	maxUploadSize := utils.GetMaxUploadSize(payload.UserPlan)
+	maxUploadSize := utils.GetUserMaxUploadSize(payload.UserPlan)
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 
@@ -27,7 +27,9 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		fileName = uuid.New().String()
 	}
 
-	fileAddress, totalUploadSize, err := handler.uploadFile(r, maxUploadSize, payload.UserId, payload.UserPlan)
+	uploadDir := getUserUploadDir(payload.UserId)
+
+	fileAddress, totalUploadSize, err := handler.storeUserFile(r, maxUploadSize, payload.UserId, payload.UserPlan, uploadDir)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -39,19 +41,22 @@ func (handler *Handler) CreateFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expireAt := utils.GetExpirationDate(payload.UserPlan)
+	expireAt := utils.GetUserExpirationDate(payload.UserPlan)
 
-	if _, err := handler.Models.File.Create(userObjectId, fileName, fileAddress, expireAt); err != nil {
+	// no teamId for user uploaded files
+	teamId := primitive.NilObjectID
+	if _, err := handler.Models.File.Create(userObjectId, teamId, fileName, fileAddress, expireAt); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file instance: %w", err))
 		return
 	}
 
-	if err := handler.Models.User.Update(userObjectId, bson.M{"total_upload_size": totalUploadSize}); err != nil {
+	updates := bson.M{"total_upload_size": totalUploadSize}
+	if err := handler.Models.User.Update(userObjectId, updates); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("updating user instance: %w", err))
 		return
 	}
 
-	utils.WriteJSON(w, "file is uploading...")
+	utils.WriteJSON(w, "file uploaded successfully")
 }
 
 // GetFiles -> Returns List
@@ -283,14 +288,14 @@ func (handler *Handler) SearchFiles(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, data)
 }
 
-func (handler *Handler) uploadFile(r *http.Request, maxUploadSize int64, userId, userPlan string) (string, int64, error) {
+func (handler *Handler) storeUserFile(r *http.Request, maxUploadSize int64, userId, userPlan, uploadDir string) (string, int64, error) {
 	allowedTypes := []string{"image/jpeg", "image/png", "application/zip"}
 
 	file, err := utils.ReadFile(r, maxUploadSize, allowedTypes)
 	if err != nil {
 		return "", 0, err
 	}
-	
+
 	defer file.File.Close()
 
 	totalUsedStorage, err := handler.IsUserEligibleToUpload(userId, userPlan, file.Size)
@@ -298,7 +303,7 @@ func (handler *Handler) uploadFile(r *http.Request, maxUploadSize int64, userId,
 		return "", 0, err
 	}
 
-	fileAddress, err := file.UploadToDisk(getUploadDir(userId))
+	fileAddress, err := file.UploadToDisk(uploadDir)
 	if err != nil {
 		return "", 0, err
 	}
@@ -306,7 +311,7 @@ func (handler *Handler) uploadFile(r *http.Request, maxUploadSize int64, userId,
 	return fileAddress, totalUsedStorage, nil
 }
 
-func getUploadDir(userId string) string {
+func getUserUploadDir(userId string) string {
 	return "uploads/user_files/" + userId + "/"
 }
 

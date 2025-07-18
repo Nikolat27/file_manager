@@ -8,8 +8,8 @@ type Models struct {
 	User         UserModel
 	File         FileModel
 	FileSettings FileSettingModel
-	Approval     ApprovalModel
-	Teams        TeamModel
+	Approval ApprovalModel
+	Team     TeamModel
 }
 
 func New(db *mongo.Database) *Models {
@@ -18,6 +18,6 @@ func New(db *mongo.Database) *Models {
 		File:         FileModel{db: db},
 		FileSettings: FileSettingModel{db: db},
 		Approval:     ApprovalModel{db: db},
-		Teams:        TeamModel{db: db},
+		Team:         TeamModel{db: db},
 	}
 }
