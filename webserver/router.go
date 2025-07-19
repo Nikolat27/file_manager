@@ -25,9 +25,12 @@ func (router *AppRouter) registerRoutes(handler *handlers.Handler) {
 	
 	router.registerAuthRoutes(handler)
 	router.registerUserRoutes(handler)
+	
 	router.registerFileRoutes(handler)
 	router.registerFileSettingsRoutes(handler)
+	
 	router.registerApprovalRoutes(handler)
+	
 	router.registerTeamRoutes(handler)
 }
 
