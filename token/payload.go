@@ -20,7 +20,7 @@ func NewPayload(username, userId, userPlan string, duration time.Duration) (*Pay
 	if err != nil {
 		return nil, err
 	}
-
+	
 	payload := &Payload{
 		ID:        tokenId,
 		Username:  username,
