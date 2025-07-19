@@ -1,14 +1,12 @@
 package main
 
 import (
-	"errors"
 	"file_manager/database"
 	"file_manager/database/models"
 	"file_manager/handlers"
 	"file_manager/webserver"
 	"fmt"
 	"github.com/joho/godotenv"
-	"os"
 )
 
 func main() {
@@ -16,12 +14,7 @@ func main() {
 		panic(fmt.Errorf("ERROR loading environmental variables: %s", err))
 	}
 
-	uri, err := getMongoUri()
-	if err != nil {
-		panic(fmt.Errorf("ERROR %s", err))
-	}
-
-	db, err := database.New(uri)
+	db, err := database.New()
 	if err != nil {
 		panic(fmt.Errorf("ERROR initializing database client: %s", err))
 	}
@@ -49,11 +42,4 @@ func main() {
 	}
 }
 
-func getMongoUri() (string, error) {
-	uri := os.Getenv("MONGO_URI")
-	if uri == "" {
-		return "", errors.New("MONGO_URI environmental variable does not exist")
-	}
 
-	return uri, nil
-}

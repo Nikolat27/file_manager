@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -9,12 +10,17 @@ import (
 	"time"
 )
 
-func New(uri string) (*mongo.Database, error) {
+func New() (*mongo.Database, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	cliOptions := options.Client().ApplyURI(uri)
+	uri, err := getMongoUri()
+	if err != nil {
+		return nil, err
+	}
 	
+	cliOptions := options.Client().ApplyURI(uri)
+
 	mongoClient, err := mongo.Connect(ctx, cliOptions)
 	if err != nil {
 		return nil, err
@@ -37,4 +43,13 @@ func getDBName() string {
 	}
 
 	return dbName
+}
+
+func getMongoUri() (string, error) {
+	uri := os.Getenv("MONGO_URI")
+	if uri == "" {
+		return "", errors.New("MONGO_URI environmental variable does not exist")
+	}
+
+	return uri, nil
 }
