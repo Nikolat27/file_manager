@@ -190,7 +190,7 @@ func (handler *Handler) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, "folder deleted successfully")
 }
 
-func (handler *Handler) GetListFolders(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) GetFoldersList(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
 		utils.WriteError(w, http.StatusUnauthorized, err)

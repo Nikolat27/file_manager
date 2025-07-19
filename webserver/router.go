@@ -69,7 +69,7 @@ func (router *AppRouter) registerFileRoutes(handler *handlers.Handler) {
 
 // registerFileRoutes -> Folder
 func (router *AppRouter) registerFolderRoutes(handler *handlers.Handler) {
-	router.CoreRouter.HandlerFunc("GET", "/api/folder/get", handler.GetListFolders)
+	router.CoreRouter.HandlerFunc("GET", "/api/folder/get", handler.GetFoldersList)
 	router.CoreRouter.HandlerFunc("POST", "/api/folder/create", handler.CreateFolder)
 	router.CoreRouter.HandlerFunc("GET", "/api/folder/get/:id", handler.GetFolderContents)
 	router.CoreRouter.HandlerFunc("PUT", "/api/folder/rename/:id", handler.RenameFolder)
