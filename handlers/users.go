@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	GB                               = 1024 * 1024 * 1024
-	FreePlanMaxStorageBytes    int64 = 2 * GB
-	PlusPlanMaxStorageBytes    int64 = 100 * GB
-	PremiumPlanMaxStorageBytes int64 = 1024 * GB
+	GBytes                               = 1024 * 1024 * 1024
+	UserFreePlanMaxStorageBytes    int64 = 2 * GBytes
+	UserPlusPlanMaxStorageBytes    int64 = 100 * GBytes
+	UserPremiumPlanMaxStorageBytes int64 = 1024 * GBytes
 )
 
 func (handler *Handler) UpdateUserPlan(w http.ResponseWriter, r *http.Request) {
@@ -94,11 +94,11 @@ func (handler *Handler) getUsedStorage(userId string) (int64, error) {
 func getUserTotalStorage(plan string) (int64, error) {
 	switch plan {
 	case "free":
-		return FreePlanMaxStorageBytes, nil
+		return UserFreePlanMaxStorageBytes, nil
 	case "plus":
-		return PlusPlanMaxStorageBytes, nil
+		return UserPlusPlanMaxStorageBytes, nil
 	case "premium":
-		return PremiumPlanMaxStorageBytes, nil
+		return UserPremiumPlanMaxStorageBytes, nil
 	case "":
 		return 0, errors.New("plan is missing")
 	default:

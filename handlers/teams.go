@@ -239,7 +239,7 @@ func (handler *Handler) UploadTeamFile(w http.ResponseWriter, r *http.Request) {
 
 	maxUploadSize := utils.GetTeamMaxUploadSize(teamInstance.Plan)
 
-	uploadDir := getTeamUploadDir(teamIdStr)
+	uploadDir := utils.GetTeamUploadDir(teamIdStr)
 
 	fileAddress, totalUploadSize, err := handler.storeTeamFile(r, maxUploadSize, teamIdStr, teamInstance.Plan, uploadDir)
 	if err != nil {
@@ -308,7 +308,7 @@ func (handler *Handler) storeTeamFile(r *http.Request, maxUploadSize int64, id, 
 }
 
 func (handler *Handler) isTeamEligibleToUpload(id, plan string, fileSize int64) (int64, error) {
-	totalStorage, err := getTeamTotalStorage(plan)
+	totalStorage, err := utils.GetTeamTotalStorage(plan)
 	if err != nil {
 		return 0, err
 	}
@@ -344,19 +344,4 @@ func (handler *Handler) getTeamUsedStorage(id string) (int64, error) {
 	return handler.Models.Team.GetUsedStorage(userObjectId)
 }
 
-func getTeamTotalStorage(plan string) (int64, error) {
-	switch plan {
-	case "free":
-		return FreePlanMaxStorageBytes, nil
-	case "premium":
-		return PremiumPlanMaxStorageBytes, nil
-	case "":
-		return 0, errors.New("plan is missing")
-	default:
-		return 0, fmt.Errorf("invalid plan: %s", plan)
-	}
-}
 
-func getTeamUploadDir(teamId string) string {
-	return "uploads/team_files/files/" + teamId + "/"
-}
