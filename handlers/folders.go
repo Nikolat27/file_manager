@@ -149,6 +149,44 @@ func (handler *Handler) RenameFolder(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, "folder`s name changed successfully")
 }
 
+func (handler *Handler) DeleteFolder(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	folderId, err := utils.ParseIdParam(r.Context())
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	folderObjectId, err := utils.ToObjectID(folderId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := handler.Models.Folder.Validate(folderObjectId, userObjectId); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := handler.Models.Folder.Delete(folderObjectId); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "folder deleted successfully")
+}
+
 func getFolderId(r *http.Request) (primitive.ObjectID, error) {
 	folderId := r.FormValue("folder_id")
 	if folderId == "" {
