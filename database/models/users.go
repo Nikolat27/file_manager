@@ -131,6 +131,10 @@ func (user *UserModel) GetUsedStorage(id primitive.ObjectID) (int64, error) {
 
 	var userInstance User
 	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter, findOptions).Decode(&userInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return 0, errors.New("user with this id doesnt exist")
+		}
+		
 		return 0, err
 	}
 
@@ -158,6 +162,26 @@ func (user *UserModel) CheckExist(id primitive.ObjectID) error {
 		}
 
 		return err
+	}
+
+	return nil
+}
+
+func (user *UserModel) Delete(id primitive.ObjectID) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	result, err := user.db.Collection("users").DeleteOne(ctx, filter)
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return errors.New("couldn`t delete the user instance")
 	}
 
 	return nil

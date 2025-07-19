@@ -301,3 +301,39 @@ func (file *FileModel) GetByFolderId(folderId primitive.ObjectID, page, pageSize
 
 	return files, nil
 }
+
+func (file *FileModel) GetUserFileAddresses(userId primitive.ObjectID) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"owner_id": userId,
+	}
+	projection := bson.M{
+		"address": 1,
+		"_id":     0,
+	}
+
+	findOptions := options.Find()
+	findOptions.SetProjection(projection)
+
+	cursor, err := file.db.Collection("files").Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var addresses []string
+	for cursor.Next(ctx) {
+		var result struct {
+			Address string `bson:"address"`
+		}
+		
+		if err := cursor.Decode(&result); err != nil {
+			return nil, err
+		}
+		addresses = append(addresses, result.Address)
+	}
+
+	return addresses, cursor.Err()
+}

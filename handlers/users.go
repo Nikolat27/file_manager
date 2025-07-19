@@ -1,10 +1,14 @@
 package handlers
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"file_manager/utils"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"log/slog"
 	"net/http"
 	"os"
 )
@@ -15,6 +19,34 @@ const (
 	UserPlusPlanMaxStorageBytes    int64 = 100 * GBytes
 	UserPremiumPlanMaxStorageBytes int64 = 1024 * GBytes
 )
+
+func (handler *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	user, err := handler.Models.User.GetById(userObjectId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	data, err := json.MarshalIndent(user, "", "\t")
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, data)
+}
 
 func (handler *Handler) UpdateUserPlan(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
@@ -88,7 +120,7 @@ func (handler *Handler) UploadUserAvatar(w http.ResponseWriter, r *http.Request)
 
 	var maxAvatarSize int64 = 5 << 20 // 5 MB
 	if err := r.ParseMultipartForm(maxAvatarSize); err != nil {
-		utils.WriteError(w, http.StatusUnauthorized, err)
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -150,6 +182,85 @@ func (handler *Handler) getUsedStorage(userId string) (int64, error) {
 	}
 
 	return handler.Models.User.GetUsedStorage(userObjectId)
+}
+
+func (handler *Handler) DeleteUserAccount(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	var input struct {
+		Password string `json:"password"`
+	}
+
+	user, err := handler.Models.User.GetById(userObjectId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	decodedHashPassword, err := hex.DecodeString(user.HashedPassword)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	decodedSalt, err := hex.DecodeString(user.Salt)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if !utils.ValidateHash([]byte(input.Password), decodedHashPassword, decodedSalt) {
+		utils.WriteError(w, http.StatusBadRequest, "password is incorrect")
+		return
+	}
+
+	if err := handler.Models.User.Delete(userObjectId); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := handler.removeUserFilesAndAvatar(userObjectId, user.AvatarUrl); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "user deleted successfully")
+}
+
+func (handler *Handler) removeUserFilesAndAvatar(userId primitive.ObjectID, userAvatarUrl string) error {
+	if err := os.Remove(userAvatarUrl); err != nil {
+		slog.Error("removing user avatar", "error", err)
+	}
+
+	fileAddresses, err := handler.Models.File.GetUserFileAddresses(userId)
+	if err != nil {
+		slog.Error("retrieving user file addresses", "error", err)
+		return err
+	}
+
+	for _, address := range fileAddresses {
+		if err := os.Remove(address); err != nil {
+			slog.Error(fmt.Sprintf("removing user file: %s", address), "error", err)
+			continue
+		}
+	}
+
+	return nil
 }
 
 func getUserTotalStorage(plan string) (int64, error) {

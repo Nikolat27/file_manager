@@ -97,6 +97,10 @@ func (handler *Handler) GetFolderContents(w http.ResponseWriter, r *http.Request
 }
 
 func (handler *Handler) ValidateFolderId(folderId, userId primitive.ObjectID) error {
+	if folderId == primitive.NilObjectID {
+		return nil
+	}
+	
 	return handler.Models.Folder.Validate(folderId, userId)
 }
 
