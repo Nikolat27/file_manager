@@ -22,15 +22,17 @@ func NewRouter(handler *handlers.Handler) *AppRouter {
 
 func (router *AppRouter) registerRoutes(handler *handlers.Handler) {
 	router.registerStaticRoutes()
-	
+
 	router.registerAuthRoutes(handler)
 	router.registerUserRoutes(handler)
-	
+
 	router.registerFileRoutes(handler)
 	router.registerFileSettingsRoutes(handler)
-	
+
+	router.registerFolderRoutes(handler)
+
 	router.registerApprovalRoutes(handler)
-	
+
 	router.registerTeamRoutes(handler)
 }
 
@@ -60,6 +62,12 @@ func (router *AppRouter) registerFileRoutes(handler *handlers.Handler) {
 	router.CoreRouter.HandlerFunc("GET", "/api/file/get/:id", handler.GetFile)
 	router.CoreRouter.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
 	router.CoreRouter.HandlerFunc("POST", "/api/file/search", handler.SearchFiles)
+}
+
+// registerFileRoutes -> Folder
+func (router *AppRouter) registerFolderRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("POST", "/api/folder/create", handler.CreateFolder)
+	router.CoreRouter.HandlerFunc("GET", "/api/folder/get/:id", handler.GetFolder)
 }
 
 // registerFileSettingsRoutes -> File Settings
