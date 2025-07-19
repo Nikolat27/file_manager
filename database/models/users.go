@@ -63,7 +63,12 @@ func (user *UserModel) GetById(id primitive.ObjectID) (*User, error) {
 	}
 
 	var userInstance User
-	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter).Decode(&userInstance); err != nil {
+	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter).
+		Decode(&userInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, errors.New("user with this id does not exist")
+		}
+
 		return nil, err
 	}
 
@@ -134,7 +139,7 @@ func (user *UserModel) GetUsedStorage(id primitive.ObjectID) (int64, error) {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return 0, errors.New("user with this id doesnt exist")
 		}
-		
+
 		return 0, err
 	}
 

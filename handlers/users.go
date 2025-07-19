@@ -212,6 +212,11 @@ func (handler *Handler) DeleteUserAccount(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if input.Password == "" {
+		utils.WriteError(w, http.StatusBadRequest, "you must enter your password")
+		return
+	}
+
 	decodedHashPassword, err := hex.DecodeString(user.HashedPassword)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
