@@ -24,7 +24,7 @@ func (handler *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := utils.ValidatePlan(payload.UserPlan); err != nil {
+	if err := utils.ValidateUserPlan(payload.UserPlan); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -114,6 +114,65 @@ func (handler *Handler) GetTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteJSON(w, data)
+}
+
+func (handler *Handler) UpdateTeamPlan(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	ownerObjectId, err := utils.ToObjectID(payload.UserId)
+
+	teamIdStr, err := utils.ParseIdParam(r.Context())
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	teamObjectId, err := utils.ToObjectID(teamIdStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	teamInstance, err := handler.Models.Team.Get(teamObjectId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if teamInstance.OwnerId != ownerObjectId {
+		utils.WriteError(w, http.StatusBadRequest, "only the team owner can update its plan")
+		return
+	}
+
+	var input struct {
+		Plan string `json:"plan"`
+	}
+
+	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := utils.ValidateTeamPlan(input.Plan); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+	
+	updates := bson.M{
+		"plan":       input.Plan,
+		"updated_at": time.Now(),
+	}
+
+	if err := handler.Models.Team.Update(teamObjectId, updates); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "team`s plan updated successfully")
 }
 
 func (handler *Handler) DeleteTeam(w http.ResponseWriter, r *http.Request) {

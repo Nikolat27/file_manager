@@ -31,7 +31,7 @@ func (handler *Handler) UpdateUserPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := utils.ValidatePlan(input.Plan); err != nil {
+	if err := utils.ValidateUserPlan(input.Plan); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}

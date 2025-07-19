@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-// Available Plans: free, plus, premium
-
 func GetUserMaxUploadSize(plan string) int64 {
 	switch plan {
 	case "free":
@@ -55,10 +53,21 @@ func GetTeamExpirationDate(plan string) time.Time {
 	}
 }
 
-func ValidatePlan(plan string) error {
+// ValidateUserPlan -> free, plus, premium
+func ValidateUserPlan(plan string) error {
 	if plan == "free" || plan == "plus" || plan == "premium" {
 		return nil
 	} else {
-		return fmt.Errorf("plan is invalid: %s", plan)
+		return fmt.Errorf("plan is invalid: %s. Must be either free, plus or premium", plan)
+	}
+}
+
+// ValidateTeamPlan -> free, premium
+func ValidateTeamPlan(plan string) error {
+	fmt.Println(plan)
+	if plan == "free" || plan == "premium" {
+		return nil
+	} else {
+		return fmt.Errorf("plan is invalid: %s. Must be either free or premium", plan)
 	}
 }
