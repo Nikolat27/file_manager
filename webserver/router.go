@@ -20,6 +20,7 @@ func NewRouter(handler *handlers.Handler) *AppRouter {
 	return routerInstance
 }
 
+// do not use OPTIONS method. Allowed Methods: GET, POST, PUT, DELETE
 func (router *AppRouter) registerRoutes(handler *handlers.Handler) {
 	router.registerStaticRoutes()
 
