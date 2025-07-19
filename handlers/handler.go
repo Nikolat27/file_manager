@@ -5,6 +5,8 @@ import (
 	"file_manager/token"
 )
 
+type envelope map[string]any
+
 type Handler struct {
 	PasetoMaker *token.PasetoMaker
 	Models      *models.Models

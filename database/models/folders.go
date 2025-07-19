@@ -41,6 +41,30 @@ func (folder *FolderModel) Create(ownerId primitive.ObjectID, name string) (prim
 	return result.InsertedID.(primitive.ObjectID), nil
 }
 
+func (folder *FolderModel) Rename(id primitive.ObjectID, updates any) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	update := bson.M{
+		"$set": updates,
+	}
+
+	result, err := folder.db.Collection("folders").UpdateByID(ctx, id, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return errors.New("no folder found with this id")
+	}
+
+	if result.ModifiedCount == 0 {
+		return errors.New("did not detect any change")
+	}
+
+	return nil
+}
+
 func (folder *FolderModel) Validate(folderId, ownerId primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

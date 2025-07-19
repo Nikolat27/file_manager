@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"file_manager/utils"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 )
@@ -77,7 +78,7 @@ func (handler *Handler) GetFolder(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
-	
+
 	files, err := handler.Models.File.GetByFolderId(folderObjectId, page, pageSize)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -95,6 +96,57 @@ func (handler *Handler) GetFolder(w http.ResponseWriter, r *http.Request) {
 
 func (handler *Handler) ValidateFolderId(folderId, userId primitive.ObjectID) error {
 	return handler.Models.Folder.Validate(folderId, userId)
+}
+
+func (handler *Handler) RenameFolder(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	folderId, err := utils.ParseIdParam(r.Context())
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	folderObjectId, err := utils.ToObjectID(folderId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := handler.Models.Folder.Validate(folderObjectId, userObjectId); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	var input struct {
+		Name string `json:"name"`
+	}
+
+	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	updates := bson.M{
+		"name": input.Name,
+	}
+
+	if err := handler.Models.Folder.Rename(folderObjectId, updates); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "folder`s name changed successfully")
 }
 
 func getFolderId(r *http.Request) (primitive.ObjectID, error) {

@@ -17,11 +17,9 @@ func ParseJSON(reqBody io.ReadCloser, maxBytes int64, input any) error {
 
 func WriteJSON[T interface{ []byte | string }](w http.ResponseWriter, msg T) {
 	w.WriteHeader(http.StatusOK)
-
 	if _, err := w.Write([]byte(msg)); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-
 }
 
 func WriteError(w http.ResponseWriter, status int, err any) {
