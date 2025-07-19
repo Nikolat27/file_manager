@@ -326,7 +326,7 @@ func (handler *Handler) storeUserFile(r *http.Request, maxUploadSize int64, user
 }
 
 func getUserUploadDir(userId string) string {
-	return "uploads/user_files/" + userId + "/"
+	return "uploads/user_files/" + userId + "/files/"
 }
 
 func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId primitive.ObjectID) error {

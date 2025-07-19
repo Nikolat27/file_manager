@@ -19,6 +19,7 @@ type User struct {
 	Id              primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
 	Username        string             `json:"username" bson:"username"`
 	Plan            string             `json:"plan"`
+	AvatarUrl       string             `json:"avatar_url" bson:"avatar_url"`
 	TotalUploadSize int64              `json:"total_upload_size" bson:"total_upload_size"`
 	Salt            string             `json:"salt" bson:"salt"`
 	HashedPassword  string             `json:"hashed_password" bson:"hashed_password"`
@@ -53,7 +54,7 @@ func (user *UserModel) Create(username, plan, salt, hashedPassword string) (prim
 	return id, nil
 }
 
-func (user *UserModel) GetById(id string) (*User, error) {
+func (user *UserModel) GetById(id primitive.ObjectID) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

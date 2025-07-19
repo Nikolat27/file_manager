@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
+	"os"
 )
 
 const (
@@ -78,6 +79,66 @@ func (handler *Handler) IsUserEligibleToUpload(userId, userPlan string, fileSize
 	return newTotalStorage, nil
 }
 
+func (handler *Handler) UploadUserAvatar(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	var maxAvatarSize int64 = 5 << 20 // 5 MB
+	if err := r.ParseMultipartForm(maxAvatarSize); err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	user, err := handler.Models.User.GetById(userObjectId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	allowedTypes := []string{"image/jpg", "image/jpeg", "image/png"}
+
+	file, err := utils.ReadFile(r, maxAvatarSize, allowedTypes)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	uploadDir := getUserAvatarUploadDir(payload.UserId)
+
+	fileAddress, err := file.UploadToDisk(uploadDir)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	updates := bson.M{
+		"avatar_url": fileAddress,
+	}
+
+	if user.AvatarUrl != "" {
+		if err := os.Remove(user.AvatarUrl); err != nil {
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+	}
+
+	if err := handler.Models.User.Update(userObjectId, updates); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "user`s avatar uploaded successfully")
+}
+
 func (handler *Handler) getUsedStorage(userId string) (int64, error) {
 	if userId == "" {
 		return 0, errors.New("user id is missing")
@@ -104,4 +165,8 @@ func getUserTotalStorage(plan string) (int64, error) {
 	default:
 		return 0, fmt.Errorf("invalid plan: %s", plan)
 	}
+}
+
+func getUserAvatarUploadDir(userId string) string {
+	return "uploads/user_files/" + userId + "/avatar/"
 }

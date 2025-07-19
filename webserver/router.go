@@ -52,6 +52,7 @@ func (router *AppRouter) registerAuthRoutes(handler *handlers.Handler) {
 // registerUserRoutes -> Users
 func (router *AppRouter) registerUserRoutes(handler *handlers.Handler) {
 	router.CoreRouter.HandlerFunc("PUT", "/api/user/plan/change", handler.UpdateUserPlan)
+	router.CoreRouter.HandlerFunc("POST", "/api/user/avatar/upload", handler.UploadUserAvatar)
 }
 
 // registerFileRoutes -> Files

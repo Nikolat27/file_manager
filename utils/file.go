@@ -18,7 +18,7 @@ type UploadedFile struct {
 	Name string
 }
 
-func ReadFile(r *http.Request, maxMemory int64, allowedTypes []string) (*UploadedFile, error) {
+func ReadFile(r *http.Request, maxMemory int64, allowedFormats []string) (*UploadedFile, error) {
 	if err := r.ParseMultipartForm(maxMemory); err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func ReadFile(r *http.Request, maxMemory int64, allowedTypes []string) (*Uploade
 		Name: handler.Filename,
 	}
 
-	if err := uploadedFile.validateFileFormat(allowedTypes); err != nil {
+	if err := uploadedFile.validateFileFormat(allowedFormats); err != nil {
 		return nil, err
 	}
 
