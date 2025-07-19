@@ -1,0 +1,45 @@
+package main
+
+import (
+	"file_manager/database"
+	"file_manager/database/models"
+	"file_manager/handlers"
+	"file_manager/webserver"
+	"fmt"
+	"github.com/joho/godotenv"
+)
+
+func main() {
+	if err := godotenv.Load(); err != nil {
+		panic(fmt.Errorf("ERROR loading environmental variables: %s", err))
+	}
+
+	db, err := database.New()
+	if err != nil {
+		panic(fmt.Errorf("ERROR initializing database client: %s", err))
+	}
+
+	newModels := models.New(db)
+
+	handler, err := handlers.New(newModels)
+	if err != nil {
+		panic(fmt.Errorf("ERROR creating the handler: %s", err))
+	}
+
+	srv, err := webserver.New(handler, "8000")
+	if err != nil {
+		panic(fmt.Errorf("ERROR creating the server: %s", err))
+	}
+
+	defer func() {
+		if err := srv.Close(); err != nil {
+			panic(fmt.Errorf("ERROR closing http server: %s", err))
+		}
+	}()
+
+	if err := srv.Run(); err != nil {
+		panic(fmt.Errorf("ERROR running http server: %s", err))
+	}
+}
+
+
