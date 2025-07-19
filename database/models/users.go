@@ -135,3 +135,29 @@ func (user *UserModel) GetUsedStorage(id primitive.ObjectID) (int64, error) {
 
 	return userInstance.TotalUploadSize, nil
 }
+
+func (user *UserModel) CheckExist(id primitive.ObjectID) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
+
+	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter, findOptions).Err(); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return errors.New("user with this id does not exist")
+		}
+
+		return err
+	}
+
+	return nil
+}
