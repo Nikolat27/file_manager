@@ -6,56 +6,77 @@ import (
 	"net/http"
 )
 
-type Router struct {
-	Router *httprouter.Router
+type AppRouter struct {
+	CoreRouter *httprouter.Router
 }
 
-func NewRouter(handler *handlers.Handler) *Router {
-	newRouter := httprouter.New()
-
-	var router = &Router{
-		Router: newRouter,
+func NewRouter(handler *handlers.Handler) *AppRouter {
+	routerInstance := &AppRouter{
+		CoreRouter: httprouter.New(),
 	}
 
-	router.initRoutes(handler)
+	routerInstance.registerRoutes(handler)
 
-	return router
+	return routerInstance
 }
 
-func (router *Router) initRoutes(handler *handlers.Handler) {
-	// Static Files
+func (router *AppRouter) registerRoutes(handler *handlers.Handler) {
+	router.registerStaticRoutes()
+	
+	router.registerAuthRoutes(handler)
+	router.registerUserRoutes(handler)
+	router.registerFileRoutes(handler)
+	router.registerFileSettingsRoutes(handler)
+	router.registerApprovalRoutes(handler)
+	router.registerTeamRoutes(handler)
+}
+
+// registerStaticRoutes -> Static Files
+func (router *AppRouter) registerStaticRoutes() {
 	staticFilesHandler := getStaticFilesHandler()
-	router.Router.Handler("GET", "/static/*filepath", staticFilesHandler)
+	router.CoreRouter.Handler("GET", "/static/*filepath", staticFilesHandler)
+}
 
-	// Auth
-	router.Router.HandlerFunc("POST", "/api/auth/register", handler.Register)
-	router.Router.HandlerFunc("POST", "/api/auth/login", handler.Login)
+// registerAuthRoutes -> Auth
+func (router *AppRouter) registerAuthRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("POST", "/api/auth/register", handler.Register)
+	router.CoreRouter.HandlerFunc("POST", "/api/auth/login", handler.Login)
+}
 
-	// User
-	router.Router.HandlerFunc("PUT", "/api/user/plan/change", handler.UpdateUserPlan)
+// registerUserRoutes -> Users
+func (router *AppRouter) registerUserRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("PUT", "/api/user/plan/change", handler.UpdateUserPlan)
+}
 
-	// File
-	router.Router.HandlerFunc("POST", "/api/file/create", handler.UploadUserFile)
-	router.Router.HandlerFunc("GET", "/api/file/get", handler.GetFiles)
-	router.Router.HandlerFunc("DELETE", "/api/file/delete/:id", handler.DeleteFile)
-	router.Router.HandlerFunc("PUT", "/api/file/rename/:id", handler.RenameFile)
-	router.Router.HandlerFunc("GET", "/api/file/get/:id", handler.GetFile)
-	router.Router.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
-	router.Router.HandlerFunc("POST", "/api/file/search", handler.SearchFiles)
+// registerFileRoutes -> Files
+func (router *AppRouter) registerFileRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("POST", "/api/file/create", handler.UploadUserFile)
+	router.CoreRouter.HandlerFunc("GET", "/api/file/get", handler.GetFiles)
+	router.CoreRouter.HandlerFunc("DELETE", "/api/file/delete/:id", handler.DeleteFile)
+	router.CoreRouter.HandlerFunc("PUT", "/api/file/rename/:id", handler.RenameFile)
+	router.CoreRouter.HandlerFunc("GET", "/api/file/get/:id", handler.GetFile)
+	router.CoreRouter.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
+	router.CoreRouter.HandlerFunc("POST", "/api/file/search", handler.SearchFiles)
+}
 
-	// File Settings
-	router.Router.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)
+// registerFileSettingsRoutes -> File Settings
+func (router *AppRouter) registerFileSettingsRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)
+}
 
-	// Approval
-	router.Router.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
-	router.Router.HandlerFunc("PUT", "/api/approval/status", handler.UpdateApproval)
+// registerApprovalRoutes -> Approvals
+func (router *AppRouter) registerApprovalRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
+	router.CoreRouter.HandlerFunc("PUT", "/api/approval/status", handler.UpdateApproval)
+}
 
-	// Team
-	router.Router.HandlerFunc("POST", "/api/team/create", handler.CreateTeam)
-	router.Router.HandlerFunc("POST", "/api/team/file/upload/:id", handler.UploadTeamFile)
-	router.Router.HandlerFunc("GET", "/api/team/get/:id", handler.GetTeam)
-	router.Router.HandlerFunc("DELETE", "/api/team/delete/:id", handler.DeleteTeam)
-	router.Router.HandlerFunc("POST", "/api/team/user/add/:id", handler.AddUserToTeam)
+// registerTeamRoutes -> Teams
+func (router *AppRouter) registerTeamRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("POST", "/api/team/create", handler.CreateTeam)
+	router.CoreRouter.HandlerFunc("POST", "/api/team/file/upload/:id", handler.UploadTeamFile)
+	router.CoreRouter.HandlerFunc("GET", "/api/team/get/:id", handler.GetTeam)
+	router.CoreRouter.HandlerFunc("DELETE", "/api/team/delete/:id", handler.DeleteTeam)
+	router.CoreRouter.HandlerFunc("POST", "/api/team/user/add/:id", handler.AddUserToTeam)
 }
 
 func getStaticFilesHandler() http.Handler {
