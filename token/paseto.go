@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/aead/chacha20poly1305"
 	"github.com/o1egl/paseto"
+	"os"
 	"time"
 )
 
@@ -13,8 +14,6 @@ type PasetoMaker struct {
 	paseto       *paseto.V2
 	symmetricKey []byte
 }
-
-const symmetricKey = "$5rjt5n^euch!hwqar2%p$uydrgtnh%a"
 
 func New() (*PasetoMaker, error) {
 	key, err := getSymmetricKey()
@@ -58,8 +57,9 @@ func (maker *PasetoMaker) VerifyToken(token string) (*Payload, error) {
 }
 
 func getSymmetricKey() ([32]byte, error) {
+	symmetricKey := os.Getenv("PASETO_SYMMETRIC_KEY")
 	if symmetricKey == "" {
-		return [32]byte{}, errors.New("symmetric key is empty")
+		return [32]byte{}, errors.New("PASETO_SYMMETRIC_KEY env variable is missing")
 	}
 
 	hash := sha256.Sum256([]byte(symmetricKey))
