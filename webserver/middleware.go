@@ -4,6 +4,8 @@ import (
 	"errors"
 	"file_manager/handlers"
 	"net/http"
+	"os"
+	"strings"
 )
 
 // not going to use it for a while...
@@ -54,4 +56,45 @@ func getToken(w http.ResponseWriter, r *http.Request, cookieName string) (string
 	}
 
 	return cookie.Value, nil
+}
+
+func CORSMiddleware(next http.Handler) http.Handler {
+	allowedOrigins := getAllowedCORS()
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+
+		for _, allowed := range allowedOrigins {
+			if allowed == "*" {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				break
+			}
+
+			if origin == allowed {
+				w.Header().Set("Access-Control-Allow-Origin", allowed)
+				break
+			}
+		}
+
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// browser preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func getAllowedCORS() []string {
+	origins := os.Getenv("ALLOWED_CORS_ORIGINS")
+	if origins == "" {
+		return []string{"*"} // default origin
+	}
+
+	return strings.Split(origins, ",")
 }

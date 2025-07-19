@@ -27,7 +27,7 @@ func (srv *Server) setupHttpServer(handler *handlers.Handler) *Server {
 
 	srv.Server = &http.Server{
 		Addr:    fmt.Sprintf(":%s", srv.Port),
-		Handler: router.CoreRouter,
+		Handler: CORSMiddleware(router.CoreRouter),
 	}
 
 	return srv
