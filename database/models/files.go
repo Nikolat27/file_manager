@@ -18,6 +18,7 @@ type File struct {
 	Id        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	OwnerId   primitive.ObjectID `json:"owner_id" bson:"owner_id"`
 	TeamId    primitive.ObjectID `json:"team_id" bson:"team_id"`
+	FolderId  primitive.ObjectID `json:"folder_id" bson:"folder_id"`
 	Name      string             `json:"name" bson:"name"`
 	Address   string             `json:"address" bson:"address"`
 	TotalSize float64            `json:"total_size" bson:"total_size"`
@@ -25,7 +26,7 @@ type File struct {
 	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
 }
 
-func (file *FileModel) Create(ownerId, teamId primitive.ObjectID, fileName, address string,
+func (file *FileModel) Create(ownerId, teamId, folderId primitive.ObjectID, fileName, address string,
 	expireAt time.Time) (primitive.ObjectID, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -34,6 +35,7 @@ func (file *FileModel) Create(ownerId, teamId primitive.ObjectID, fileName, addr
 	newFile := &File{
 		OwnerId:   ownerId,
 		TeamId:    teamId,
+		FolderId:  folderId,
 		Name:      fileName,
 		Address:   address,
 		ExpireAt:  expireAt,
@@ -291,4 +293,35 @@ func (file *FileModel) IsExist(id primitive.ObjectID) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (file *FileModel) GetByFolderId(folderId primitive.ObjectID, page, pageSize int64) ([]File, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	filter := bson.M{
+		"folder_id": folderId,
+	}
+
+	projection := bson.M{
+		"hashed_password": 0,
+		"salt":            0,
+	}
+
+	findOptions := options.Find()
+	findOptions.SetProjection(projection)
+	findOptions.SetSkip((page - 1) * pageSize)
+	findOptions.SetLimit(pageSize)
+
+	cursor, err := file.db.Collection("files").Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	var files []File
+	if err := cursor.All(ctx, &files); err != nil {
+		return nil, err
+	}
+	
+	return files, nil
 }
