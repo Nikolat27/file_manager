@@ -8,5 +8,6 @@ import Header from './components/Header.vue';
   <div class="w-screen h-screen relative">
     <Sidebar></Sidebar>
     <Header></Header>
+    <router-view />
   </div>
 </template>
