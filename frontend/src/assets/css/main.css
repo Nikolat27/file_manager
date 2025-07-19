@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+body span p {
+    font-family: "Roboto", sans-serif !important;
+}
