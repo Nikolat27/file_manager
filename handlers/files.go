@@ -230,7 +230,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input struct {
-		Name string `json:"new_name"`
+		Name string `json:"name"`
 	}
 
 	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
@@ -239,7 +239,7 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if input.Name == "" {
-		utils.WriteError(w, http.StatusBadRequest, errors.New("'new_name' parameter is missing"))
+		utils.WriteError(w, http.StatusBadRequest, errors.New("'name' parameter is missing"))
 		return
 	}
 
