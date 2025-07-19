@@ -59,15 +59,19 @@ func (router *AppRouter) registerFileRoutes(handler *handlers.Handler) {
 	router.CoreRouter.HandlerFunc("GET", "/api/file/get", handler.GetFiles)
 	router.CoreRouter.HandlerFunc("DELETE", "/api/file/delete/:id", handler.DeleteFile)
 	router.CoreRouter.HandlerFunc("PUT", "/api/file/rename/:id", handler.RenameFile)
-	router.CoreRouter.HandlerFunc("GET", "/api/file/get/:id", handler.GetFile)
-	router.CoreRouter.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
 	router.CoreRouter.HandlerFunc("POST", "/api/file/search", handler.SearchFiles)
+
+	// GET method (for password-less files)
+	router.CoreRouter.HandlerFunc("GET", "/api/file/get/:id", handler.GetFile)
+	// POST method (for password requirable files)
+	router.CoreRouter.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
 }
 
 // registerFileRoutes -> Folder
 func (router *AppRouter) registerFolderRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("GET", "/api/folder/get", handler.GetListFolders)
 	router.CoreRouter.HandlerFunc("POST", "/api/folder/create", handler.CreateFolder)
-	router.CoreRouter.HandlerFunc("GET", "/api/folder/get/:id", handler.GetFolder)
+	router.CoreRouter.HandlerFunc("GET", "/api/folder/get/:id", handler.GetFolderContents)
 	router.CoreRouter.HandlerFunc("PUT", "/api/folder/rename/:id", handler.RenameFolder)
 	router.CoreRouter.HandlerFunc("DELETE", "/api/folder/delete/:id", handler.DeleteFolder)
 }

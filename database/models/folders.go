@@ -85,6 +85,31 @@ func (folder *FolderModel) Rename(id primitive.ObjectID, updates any) error {
 	return nil
 }
 
+func (folder *FolderModel) GetAll(ownerId primitive.ObjectID, page, pageSize int64) ([]Folder, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"owner_id": ownerId,
+	}
+
+	findOptions := options.Find()
+	findOptions.SetSkip((page - 1) * pageSize)
+	findOptions.SetLimit(pageSize)
+
+	cursor, err := folder.db.Collection("folders").Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	var folders []Folder
+	if err := cursor.All(ctx, &folders); err != nil {
+		return nil, err
+	}
+
+	return folders, nil
+}
+
 func (folder *FolderModel) Validate(folderId, ownerId primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

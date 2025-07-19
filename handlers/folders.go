@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
+	"time"
 )
 
 func (handler *Handler) CreateFolder(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +44,7 @@ func (handler *Handler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, "folder created successfully")
 }
 
-func (handler *Handler) GetFolder(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) GetFolderContents(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
 		utils.WriteError(w, http.StatusUnauthorized, err)
@@ -79,6 +80,7 @@ func (handler *Handler) GetFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// getting the files
 	files, err := handler.Models.File.GetByFolderId(folderObjectId, page, pageSize)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -138,7 +140,8 @@ func (handler *Handler) RenameFolder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updates := bson.M{
-		"name": input.Name,
+		"name":      input.Name,
+		"expire_at": time.Now(),
 	}
 
 	if err := handler.Models.Folder.Rename(folderObjectId, updates); err != nil {
@@ -185,6 +188,40 @@ func (handler *Handler) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteJSON(w, "folder deleted successfully")
+}
+
+func (handler *Handler) GetListFolders(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	page, pageSize, err := utils.GetPaginationParams(r)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	files, err := handler.Models.Folder.GetAll(userObjectId, page, pageSize)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	data, err := json.MarshalIndent(&files, "", "\t")
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, data)
 }
 
 func getFolderId(r *http.Request) (primitive.ObjectID, error) {
