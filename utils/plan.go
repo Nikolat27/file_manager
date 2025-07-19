@@ -64,7 +64,6 @@ func ValidateUserPlan(plan string) error {
 
 // ValidateTeamPlan -> free, premium
 func ValidateTeamPlan(plan string) error {
-	fmt.Println(plan)
 	if plan == "free" || plan == "premium" {
 		return nil
 	} else {
