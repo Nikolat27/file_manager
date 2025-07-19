@@ -8,7 +8,10 @@ import (
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"io"
 	"net/http"
+	"os"
+	"path"
 )
 
 func (handler *Handler) UploadUserFile(w http.ResponseWriter, r *http.Request) {
@@ -356,4 +359,42 @@ func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId 
 	}
 
 	return nil
+}
+
+func (handler *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
+	fileShortUrl, err := utils.ParseIdParam(r.Context())
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	fileObjectId, err := utils.ToObjectID(fileShortUrl)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	fileAddress, err := handler.Models.File.GetDiskAddressById(fileObjectId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	file, err := os.Open(string(fileAddress))
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	defer file.Close()
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", path.Base(file.Name())))
+	w.Header().Set("Content-Type", "application/octet-stream")
+
+	if _, err := io.Copy(w, file); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "download started successfully")
 }

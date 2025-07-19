@@ -61,6 +61,7 @@ func (router *AppRouter) registerFileRoutes(handler *handlers.Handler) {
 	router.CoreRouter.HandlerFunc("DELETE", "/api/file/delete/:id", handler.DeleteFile)
 	router.CoreRouter.HandlerFunc("PUT", "/api/file/rename/:id", handler.RenameFile)
 	router.CoreRouter.HandlerFunc("POST", "/api/file/search", handler.SearchFiles)
+	router.CoreRouter.HandlerFunc("GET", "/api/file/download/:id", handler.DownloadFile)
 
 	// GET method (for password-less files)
 	router.CoreRouter.HandlerFunc("GET", "/api/file/get/:id", handler.GetFile)
