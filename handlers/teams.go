@@ -143,6 +143,70 @@ func (handler *Handler) DeleteTeam(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, "team deleted successfully")
 }
 
+func (handler *Handler) AddUserToTeam(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	var input struct {
+		UserId string `json:"user_id"`
+	}
+
+	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	adminObjectId, err := utils.ToObjectID(payload.UserId)
+
+	teamIdStr, err := utils.ParseIdParam(r.Context())
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	teamObjectId, err := utils.ToObjectID(teamIdStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	teamInstance, err := handler.Models.Team.Get(teamObjectId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if !slices.Contains(teamInstance.Admins, adminObjectId) {
+		utils.WriteError(w, http.StatusBadRequest, "only the team admins can add users")
+		return
+	}
+
+	newUserObjectId, err := utils.ToObjectID(input.UserId)
+
+	if err := handler.Models.User.CheckExist(newUserObjectId); err != nil {
+		utils.WriteError(w, http.StatusNotFound, err)
+		return
+	}
+
+	// adding the new user
+	currentUsers := teamInstance.Users
+	currentUsers = append(currentUsers, newUserObjectId)
+
+	updates := bson.M{
+		"users": currentUsers,
+	}
+
+	if err := handler.Models.Team.Update(teamObjectId, updates); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "team users updated successfully")
+}
+
 func (handler *Handler) UploadTeamFile(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
