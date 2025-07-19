@@ -27,15 +27,26 @@ func (handler *Handler) UploadUserFile(w http.ResponseWriter, r *http.Request) {
 		fileName = uuid.New().String()
 	}
 
-	uploadDir := getUserUploadDir(payload.UserId)
-
-	fileAddress, totalUploadSize, err := handler.storeUserFile(r, maxUploadSize, payload.UserId, payload.UserPlan, uploadDir)
+	userObjectId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	userObjectId, err := utils.ToObjectID(payload.UserId)
+	folderObjectId, err := getFolderId(r)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := handler.ValidateFolderId(folderObjectId, userObjectId); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	uploadDir := getUserUploadDir(payload.UserId)
+
+	fileAddress, totalUploadSize, err := handler.storeUserFile(r, maxUploadSize, payload.UserId, payload.UserPlan, uploadDir)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -45,7 +56,7 @@ func (handler *Handler) UploadUserFile(w http.ResponseWriter, r *http.Request) {
 
 	// no teamId for user uploaded files
 	teamId := primitive.NilObjectID
-	if _, err := handler.Models.File.Create(userObjectId, teamId, fileName, fileAddress, expireAt); err != nil {
+	if _, err := handler.Models.File.Create(userObjectId, teamId, folderObjectId, fileName, fileAddress, expireAt); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file instance: %w", err))
 		return
 	}

@@ -161,7 +161,7 @@ func (handler *Handler) UpdateTeamPlan(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
-	
+
 	updates := bson.M{
 		"plan":       input.Plan,
 		"updated_at": time.Now(),
@@ -310,6 +310,25 @@ func (handler *Handler) UploadTeamFile(w http.ResponseWriter, r *http.Request) {
 		fileName = rand.Text()
 	}
 
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	folderObjectId, err := getFolderId(r)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if folderObjectId != primitive.NilObjectID {
+		if err := handler.ValidateFolderId(folderObjectId, userObjectId); err != nil {
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+	}
+
 	maxUploadSize := utils.GetTeamMaxUploadSize(teamInstance.Plan)
 
 	uploadDir := utils.GetTeamUploadDir(teamIdStr)
@@ -320,15 +339,9 @@ func (handler *Handler) UploadTeamFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userObjectId, err := utils.ToObjectID(payload.UserId)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
 	expireAt := utils.GetTeamExpirationDate(teamInstance.Plan)
 
-	if _, err := handler.Models.File.Create(userObjectId, teamObjectId, fileName, fileAddress, expireAt); err != nil {
+	if _, err := handler.Models.File.Create(userObjectId, teamObjectId, folderObjectId, fileName, fileAddress, expireAt); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file instance: %w", err))
 		return
 	}
