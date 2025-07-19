@@ -47,6 +47,7 @@ func (team *TeamModel) Create(id, ownerId primitive.ObjectID, name, description,
 		Plan:        "free",
 		Admins:      []primitive.ObjectID{ownerId},
 		Users:       []primitive.ObjectID{ownerId},
+		CreatedAt:   time.Now(),
 	}
 
 	newId, err := team.db.Collection("teams").InsertOne(ctx, newTeam)
@@ -125,7 +126,7 @@ func (team *TeamModel) Delete(id primitive.ObjectID) error {
 	if result.DeletedCount == 0 {
 		return errors.New("can`t delete this team...")
 	}
-	
+
 	return nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"slices"
+	"time"
 )
 
 const (
@@ -60,6 +61,18 @@ func (handler *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteJSON(w, fmt.Sprintf("team created successfully. Id: %s", teamId.Hex()))
+}
+
+func (handler *Handler) uploadAvatar(r *http.Request, maxUploadSize int64, teamId string) (string, error) {
+	allowedTypes := []string{"image/jpeg", "image/png", "image/jpg"}
+
+	file, err := utils.ReadFile(r, maxUploadSize, allowedTypes)
+	if err != nil {
+		return "", err
+	}
+
+	uploadDir := "uploads/team_files/avatars/" + teamId + "/"
+	return file.UploadToDisk(uploadDir)
 }
 
 func (handler *Handler) GetTeam(w http.ResponseWriter, r *http.Request) {
@@ -196,7 +209,8 @@ func (handler *Handler) AddUserToTeam(w http.ResponseWriter, r *http.Request) {
 	currentUsers = append(currentUsers, newUserObjectId)
 
 	updates := bson.M{
-		"users": currentUsers,
+		"users":      currentUsers,
+		"updated_at": time.Now(),
 	}
 
 	if err := handler.Models.Team.Update(teamObjectId, updates); err != nil {
@@ -262,6 +276,7 @@ func (handler *Handler) UploadTeamFile(w http.ResponseWriter, r *http.Request) {
 
 	updates := bson.M{
 		"storage_used": totalUploadSize,
+		"updated_at":   time.Now(),
 	}
 
 	if err := handler.Models.Team.Update(teamObjectId, updates); err != nil {
@@ -270,18 +285,6 @@ func (handler *Handler) UploadTeamFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteJSON(w, "file uploaded successfully")
-}
-
-func (handler *Handler) uploadAvatar(r *http.Request, maxUploadSize int64, teamId string) (string, error) {
-	allowedTypes := []string{"image/jpeg", "image/png", "image/jpg"}
-
-	file, err := utils.ReadFile(r, maxUploadSize, allowedTypes)
-	if err != nil {
-		return "", err
-	}
-
-	uploadDir := "uploads/team_files/avatars/" + teamId + "/"
-	return file.UploadToDisk(uploadDir)
 }
 
 func (handler *Handler) storeTeamFile(r *http.Request, maxUploadSize int64, id, plan, uploadDir string) (string, int64, error) {
@@ -343,5 +346,3 @@ func (handler *Handler) getTeamUsedStorage(id string) (int64, error) {
 
 	return handler.Models.Team.GetUsedStorage(userObjectId)
 }
-
-
