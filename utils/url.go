@@ -32,8 +32,8 @@ func GetPaginationParams(r *http.Request) (int64, int64, error) {
 	return intPage, intLimit, nil
 }
 
-func ParseIdParam(ctx context.Context) (string, error) {
-	params := httprouter.ParamsFromContext(ctx)
+func ParseIdParam(requestContext context.Context) (string, error) {
+	params := httprouter.ParamsFromContext(requestContext)
 	id := params.ByName("id")
 	if id == "" {
 		return "", errors.New("id is missing")
