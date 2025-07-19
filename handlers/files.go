@@ -46,7 +46,7 @@ func (handler *Handler) UploadUserFile(w http.ResponseWriter, r *http.Request) {
 
 	uploadDir := getUserUploadDir(payload.UserId)
 
-	fileAddress, totalUploadSize, err := handler.storeUserFile(r, maxUploadSize, payload.UserId, payload.UserPlan, uploadDir)
+	fileAddress, totalUserUploadSize, err := handler.storeUserFile(r, maxUploadSize, payload.UserId, payload.UserPlan, uploadDir)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -61,7 +61,7 @@ func (handler *Handler) UploadUserFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updates := bson.M{"total_upload_size": totalUploadSize}
+	updates := bson.M{"total_upload_size": totalUserUploadSize}
 	if err := handler.Models.User.Update(userObjectId, updates); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("updating user instance: %w", err))
 		return

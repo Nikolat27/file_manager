@@ -21,7 +21,6 @@ type File struct {
 	FolderId  primitive.ObjectID `json:"folder_id" bson:"folder_id"`
 	Name      string             `json:"name" bson:"name"`
 	Address   string             `json:"address" bson:"address"`
-	TotalSize float64            `json:"total_size" bson:"total_size"`
 	ExpireAt  time.Time          `json:"expire_at" bson:"expire_at"`
 	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
 }
@@ -298,7 +297,7 @@ func (file *FileModel) IsExist(id primitive.ObjectID) (bool, error) {
 func (file *FileModel) GetByFolderId(folderId primitive.ObjectID, page, pageSize int64) ([]File, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	filter := bson.M{
 		"folder_id": folderId,
 	}
@@ -322,6 +321,6 @@ func (file *FileModel) GetByFolderId(folderId primitive.ObjectID, page, pageSize
 	if err := cursor.All(ctx, &files); err != nil {
 		return nil, err
 	}
-	
+
 	return files, nil
 }
