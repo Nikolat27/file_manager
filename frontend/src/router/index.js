@@ -7,7 +7,18 @@ import FolderContents from "../views/FolderContents.vue";
 
 const routes = [
     { path: "/", redirect: "/home" },
-    { path: "/home", name: "home", component: HomeView },
+    {
+        path: "/home",
+        name: "home",
+        component: HomeView,
+        children: [
+            {
+                path: "photos",
+                name: "photos",
+                component: FolderContents,
+            },
+        ],
+    },
     { path: "/login", name: "login", component: LoginView },
     { path: "/register", name: "register", component: RegisterView },
     {

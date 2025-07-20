@@ -14,13 +14,15 @@ const isAuthPage = computed(() => {
 
 const userStore = useUserStore();
 
-function checkUserAuthentication() {
-    if (!userStore.token && route.name != "register") {
-        router.push("/login");
-    }
-}
 
-checkUserAuthentication();
+const publicPages = ["login", "register"];
+router.beforeEach((to, from, next) => {
+    if (!userStore.token && !publicPages.includes(to.name)) {
+        next({ name: "login" }); // or next("/login")
+    } else {
+        next();
+    }
+});
 </script>
 
 <template>

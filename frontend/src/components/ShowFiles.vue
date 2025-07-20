@@ -138,7 +138,7 @@
                         @click="handleCreate"
                         class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
                     >
-                        Create
+                        Create Short Url
                     </button>
                     <button
                         @click="downloadFile()"
