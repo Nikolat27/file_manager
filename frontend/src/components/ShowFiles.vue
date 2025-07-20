@@ -17,7 +17,7 @@
                 <tr v-for="folder in folders" :key="'folder-' + folder.id">
                     <td class="px-4 py-2 flex flex-row items-center gap-x-2 z">
                         <span title="folder">
-                            <!-- FOLDER ICON SVG HERE (unchanged) -->
+                            <!-- FOLDER ICON SVG -->
                             <svg
                                 viewBox="0 0 40 40"
                                 fill="none"
@@ -26,9 +26,6 @@
                                 width="32"
                                 height="32"
                                 class="dig-ContentIcon brws-file-name-cell-icon dig-ContentIcon--small dig-ctz1wx2_5-7-0 dig-ctz1wx4_5-7-0"
-                                data-testid="FolderBaseDefaultSmall"
-                                data-campaigns-element-id="file-thumbnail"
-                                data-thumbnail-testid="fallback-file-thumbnail"
                             >
                                 <path
                                     d="M15.002 7.004c.552.018.993.252 1.295.7l.785 2.12c.145.298.363.576.561.779.252.257.633.4 1.156.4H35.5l-.002 18c-.027.976-.3 1.594-.836 2.142-.565.577-1.383.858-2.41.858H8.748c-1.026 0-1.844-.28-2.409-.858-.564-.577-.838-1.415-.838-2.465V7.003h9.502Z"
@@ -45,9 +42,7 @@
                     <td class="px-4 py-2">
                         {{ formatDate(folder.created_at) }}
                     </td>
-                    <td class="px-4 py-2 text-sm">
-                        no expiration for folders
-                    </td>
+                    <td class="px-4 py-2 text-sm">no expiration for folders</td>
                     <td
                         class="relative px-4 py-2 text-2xl font-bold cursor-pointer select-none pl-8 pb-4"
                     >
@@ -61,7 +56,7 @@
                 <tr v-for="file in files" :key="'file-' + file.id">
                     <td class="px-4 py-2 flex flex-row items-center gap-x-2">
                         <span title="file">
-                            <!-- FILE ICON SVG HERE (unchanged) -->
+                            <!-- FILE ICON SVG -->
                             <svg
                                 class="mr-2"
                                 xmlns="http://www.w3.org/2000/svg"
@@ -114,27 +109,36 @@
                     >
                         Rename
                     </button>
+                    <button
+                        @click="
+                            deleteFolderFromModal;
+                            showModal = false;
+                        "
+                        class="w-full py-2 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-700 transition"
+                    >
+                        Delete
+                    </button>
                 </template>
-                <button
-                    v-if="!isFolderModal"
-                    @click="handleCreate"
-                    class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
-                >
-                    Create
-                </button>
-                <button
-                    v-if="!isFolderModal"
-                    @click="handleEdit"
-                    class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
-                >
-                    Edit
-                </button>
-                <button
-                    @click="handleDelete"
-                    class="w-full px-4 py-2 rounded-xl text-red-200 text-lg font-semibold hover:bg-red-600 hover:text-white transition cursor-pointer"
-                >
-                    Delete
-                </button>
+                <template v-else>
+                    <button
+                        @click="handleCreate"
+                        class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                    >
+                        Create
+                    </button>
+                    <button
+                        @click="openRenameFileModal"
+                        class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                    >
+                        Rename
+                    </button>
+                    <button
+                        @click="handleDelete"
+                        class="w-full px-4 py-2 rounded-xl text-red-200 text-lg font-semibold hover:bg-red-600 hover:text-white transition cursor-pointer"
+                    >
+                        Delete
+                    </button>
+                </template>
                 <button
                     @click="closeModal"
                     class="mt-3 w-full px-4 py-2 rounded-xl bg-white text-blue-600 font-semibold hover:bg-blue-50 hover:text-blue-700 transition cursor-pointer"
@@ -177,8 +181,49 @@
                 </div>
             </div>
         </div>
+
+        <!-- Rename File Modal -->
+        <div
+            v-if="showRenameFileModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-60"
+        >
+            <div
+                class="bg-blue-600 rounded-2xl shadow-2xl p-8 w-[90vw] max-w-md flex flex-col items-center gap-4"
+            >
+                <h2 class="text-xl font-semibold text-white mb-2">
+                    Rename File
+                </h2>
+                <input
+                    v-model="renameFileName"
+                    type="text"
+                    placeholder="Enter new file name"
+                    class="w-full px-4 py-2 rounded-xl border border-blue-300 focus:outline-none focus:border-white bg-blue-50 text-blue-900 font-semibold"
+                />
+                <div class="flex gap-4 mt-4 w-full">
+                    <button
+                        @click="renameFile"
+                        class="flex-1 py-2 rounded-xl bg-white text-blue-700 font-semibold hover:bg-blue-50 hover:text-blue-800 transition"
+                    >
+                        Rename
+                    </button>
+                    <button
+                        @click="showRenameFileModal = false"
+                        class="flex-1 py-2 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-700 transition"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="deleteFileFromModal"
+                        class="flex-1 py-2 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-700 transition"
+                    >
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
+
 <script setup>
 import { ref, onMounted } from "vue";
 import axiosInstance from "../axiosInstance";
@@ -188,8 +233,10 @@ import { showError, showSuccess } from "../utils/toast";
 const showModal = ref(false);
 const isFolderModal = ref(false);
 const showRenameModal = ref(false);
+const showRenameFileModal = ref(false);
 const currentItem = ref(null);
 const renameFolderName = ref("");
+const renameFileName = ref("");
 
 function openModal(item, isFolder) {
     showModal.value = true;
@@ -197,6 +244,8 @@ function openModal(item, isFolder) {
     currentItem.value = item;
     if (isFolder) {
         renameFolderName.value = item.name;
+    } else {
+        renameFileName.value = item.name;
     }
 }
 function closeModal() {
@@ -211,9 +260,26 @@ function handleCreate() {
     router.push(`/file/setting/create/${currentItem.value.id}`);
     closeModal();
 }
+function openRenameFileModal() {
+    showRenameFileModal.value = true;
+    showModal.value = false;
+}
+function renameFile() {
+    axiosInstance
+        .put(`/api/file/rename/${currentItem.value.id}`, {
+            name: renameFileName.value,
+        })
+        .then(() => {
+            showSuccess("File renamed successfully");
+            currentItem.value.name = renameFileName.value;
+            showRenameFileModal.value = false;
+        })
+        .catch((err) => {
+            showError(err.response.data);
+        });
+}
 function handleEdit() {
-    alert("Edit for file " + currentItem.value.id);
-    closeModal();
+    openRenameFileModal();
 }
 
 function deleteFile(fileId) {
@@ -225,6 +291,10 @@ function deleteFile(fileId) {
         .catch((err) => {
             showError(err.response.data);
         });
+}
+function deleteFileFromModal() {
+    showRenameFileModal.value = false;
+    deleteFile(currentItem.value.id);
 }
 
 function handleDelete() {
@@ -260,6 +330,10 @@ function deleteFolder(folderId) {
         .catch((err) => {
             showError(err.response.data);
         });
+}
+function deleteFolderFromModal() {
+    showRenameModal.value = false;
+    deleteFolder(currentItem.value.id);
 }
 
 const files = ref([]);
