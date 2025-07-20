@@ -39,6 +39,7 @@
             <h5 class="text-[20px] font-bold mb-4">Home</h5>
 
             <div
+                @click="goToAllFiles"
                 class="w-[196px] h-[36px] rounded-xl bg-[#f7f5f2] hover:cursor-pointer hover:bg-[#ebe9e6] flex justify-start items-center pl-4"
             >
                 <span class="text-[14px] font-medium">All files</span>
@@ -49,6 +50,7 @@
                 <span class="text-[14px] font-medium">Photos</span>
             </div>
             <div
+                @click="goToSharedUrls"
                 class="w-[196px] h-[36px] rounded-xl bg-[#f7f5f2] hover:cursor-pointer hover:bg-[#ebe9e6] flex justify-start items-center pl-4"
             >
                 <span class="text-[14px] font-medium">Shared Urls</span>
@@ -72,5 +74,13 @@ const router = useRouter();
 function handleLogout() {
     userStore.token = "";
     router.push("/login");
+}
+
+function goToAllFiles() {
+    router.push({ name: "home" });
+}
+
+function goToSharedUrls() {
+    router.push({ name: "sharedUrls" });
 }
 </script>
