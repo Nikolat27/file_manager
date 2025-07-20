@@ -141,6 +141,12 @@
                         Create
                     </button>
                     <button
+                        @click="downloadFile()"
+                        class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                    >
+                        Download
+                    </button>
+                    <button
                         @click="openRenameFileModal"
                         class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
                     >
@@ -297,6 +303,7 @@ function openModal(item, isFolder) {
         renameFileName.value = item.name;
     }
 }
+
 function closeModal() {
     showModal.value = false;
     currentItem.value = null;
@@ -306,6 +313,38 @@ function closeModal() {
 function openUploadFileModal() {
     showUploadFileModal.value = true;
     showModal.value = false;
+}
+
+async function downloadFile() {
+    const fileId = currentItem.value["id"];
+
+    try {
+        const res = await axiosInstance.get(`/api/file/download/${fileId}`, {
+            responseType: "blob",
+        });
+
+        // Extract file extension from content-type header
+        const contentType = res.headers["content-type"] || "";
+        let ext = contentType.split("/")[1] || "bin"; // fallback to .bin
+
+        // For content types like "application/pdf"
+        if (ext.includes(";")) ext = ext.split(";")[0];
+
+        const filename = `${fileId}.${ext}`;
+        const url = URL.createObjectURL(res.data);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+
+        showSuccess("Download started");
+        closeModal();
+    } catch (err) {
+        showError("Download failed");
+    }
 }
 
 function uploadFileToFolder() {
@@ -336,10 +375,12 @@ function handleCreate() {
     router.push(`/file/setting/create/${currentItem.value.id}`);
     closeModal();
 }
+
 function openRenameFileModal() {
     showRenameFileModal.value = true;
     showModal.value = false;
 }
+
 function renameFile() {
     axiosInstance
         .put(`/api/file/rename/${currentItem.value.id}`, {
@@ -371,6 +412,7 @@ function deleteFile(fileId) {
             showError(err.response.data);
         });
 }
+
 function deleteFileFromModal() {
     showRenameFileModal.value = false;
     deleteFile(currentItem.value.id);
@@ -400,6 +442,7 @@ function renameFolder() {
             showError(err.response.data);
         });
 }
+
 function deleteFolder(folderId) {
     axiosInstance
         .delete(`/api/folder/delete/${folderId}`)
@@ -411,6 +454,7 @@ function deleteFolder(folderId) {
             showError(err.response.data);
         });
 }
+
 function deleteFolderFromModal() {
     showRenameModal.value = false;
     deleteFolder(currentItem.value.id);

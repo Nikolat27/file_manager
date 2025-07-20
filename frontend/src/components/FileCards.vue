@@ -141,6 +141,7 @@ function handleUpload() {
             customFileName.value = "";
             // Show a toast or refresh file list if needed
             showSuccess("file uploaded successfully");
+            window.location.reload();
         })
         .catch((err) => {
             console.error("Upload failed:", err);

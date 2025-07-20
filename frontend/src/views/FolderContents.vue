@@ -335,28 +335,31 @@ function createSettings() {
     );
     closeFileModal();
 }
+
 async function downloadFile(fileId) {
     try {
         const res = await axiosInstance.get(`/api/file/download/${fileId}`, {
             responseType: "blob",
         });
-        const url = window.URL.createObjectURL(new Blob([res.data]));
+
+        // Extract file extension from content-type header
+        const contentType = res.headers['content-type'] || '';
+        let ext = contentType.split('/')[1] || 'bin'; // fallback to .bin
+
+        // For content types like "application/pdf"
+        if (ext.includes(';')) ext = ext.split(';')[0];
+
+        const filename = `${fileId}.${ext}`;
+        const url = URL.createObjectURL(res.data);
         const link = document.createElement("a");
-        // Try to get file name from Content-Disposition header
-        let filename = "downloaded_file";
-        const disp = res.headers["content-disposition"];
-        if (disp && disp.includes("filename=")) {
-            filename = disp
-                .split("filename=")[1]
-                .replace(/"/g, "")
-                .split(";")[0];
-        }
         link.href = url;
-        link.setAttribute("download", filename);
+        link.download = filename;
         document.body.appendChild(link);
         link.click();
         link.remove();
-        showSuccess("File download started");
+        URL.revokeObjectURL(url);
+
+        showSuccess("Download started");
         closeFileModal();
     } catch (err) {
         showError("Download failed");

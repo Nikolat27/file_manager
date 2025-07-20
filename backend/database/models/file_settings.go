@@ -82,13 +82,8 @@ func (file *FileSettingModel) Delete(fileId primitive.ObjectID) error {
 		"file_id": fileId,
 	}
 
-	result, err := file.db.Collection("file_settings").DeleteOne(ctx, filter)
-	if err != nil {
+	if _, err := file.db.Collection("file_settings").DeleteOne(ctx, filter); err != nil {
 		return err
-	}
-
-	if result.DeletedCount == 0 {
-		return errors.New("setting with this file id does not exist")
 	}
 
 	return nil
