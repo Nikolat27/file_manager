@@ -174,13 +174,11 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	resp, err := json.MarshalIndent(&file, "", "\t")
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return
+	response := map[string]any{
+		"file_address": file.Address,
 	}
 
-	utils.WriteJSON(w, resp)
+	utils.WriteJSONData(w, response)
 }
 
 func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
@@ -304,7 +302,7 @@ func (handler *Handler) SearchFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) storeUserFile(r *http.Request, maxUploadSize int64, userId, userPlan, uploadDir string) (string, int64, error) {
-	allowedTypes := []string{"image/jpeg", "image/png", "application/zip"}
+	allowedTypes := []string{"image/jpeg", "image/png", "application/zip", "application/pdf"}
 
 	file, err := utils.ReadFile(r, maxUploadSize, allowedTypes)
 	if err != nil {
