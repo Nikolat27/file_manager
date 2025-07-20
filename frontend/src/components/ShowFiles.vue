@@ -105,7 +105,7 @@
                             showRenameModal = true;
                             showModal = false;
                         "
-                        class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                        class="w-full border-white border-2 mb-3 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
                     >
                         Rename
                     </button>
@@ -122,19 +122,19 @@
                 <template v-else>
                     <button
                         @click="handleCreate"
-                        class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                        class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
                     >
                         Create
                     </button>
                     <button
                         @click="openRenameFileModal"
-                        class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                        class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
                     >
                         Rename
                     </button>
                     <button
                         @click="handleDelete"
-                        class="w-full px-4 py-2 rounded-xl text-red-200 text-lg font-semibold hover:bg-red-600 hover:text-white transition cursor-pointer"
+                        class="w-full border-red border-2 px-4 py-2 rounded-xl text-red-300 text-lg font-semibold hover:bg-red-600 hover:text-white transition cursor-pointer"
                     >
                         Delete
                     </button>
