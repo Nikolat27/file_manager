@@ -6,6 +6,7 @@ import RegisterView from "../views/Register.vue";
 import CreateFileSettingsView from "../views/CreateFileSettings.vue";
 import FolderContents from "../views/FolderContents.vue";
 import ShortUrlsView from "../views/ShortUrls.vue";
+import GetFileView from "../views/GetFile.vue";
 
 const routes = [
     { path: "/", redirect: "/home" },
@@ -36,6 +37,11 @@ const routes = [
         path: "/folder/get/:id",
         name: "FolderContents",
         component: FolderContents,
+    },
+    {
+        path: "/file/get/:id",
+        name: "GetFile",
+        component: GetFileView,
     },
 ];
 

@@ -18,34 +18,34 @@
             </thead>
             <tbody>
                 <tr v-for="url in sharedUrls" :key="url.id">
-                    <td class="px-4 py-2">
+                    <td class="px-8 py-2">
                         <a
-                            :href="url.shortUrl"
+                            @click="redirectToGetFile(url.short_url)"
                             target="_blank"
-                            class="text-blue-600 underline"
-                            >{{ url.shortUrl }}</a
+                            class="text-blue-600 underline font-semibold cursor-pointer"
+                            >click</a
                         >
                     </td>
                     <td class="px-4 py-2 text-center">
-                        <span v-if="url.passwordRequired">✅</span>
+                        <span v-if="url.hashed_password">✅</span>
                         <span v-else>❌</span>
                     </td>
                     <td class="px-4 py-2 text-center">
-                        <span v-if="url.approvableRequired">✅</span>
+                        <span v-if="url.approvable">✅</span>
                         <span v-else>❌</span>
                     </td>
                     <td class="px-4 py-2 text-center">
-                        {{ url.maxDownloads || "-" }}
+                        {{ url.max_downloads === -1 ? "-" : url.max_downloads }}
                     </td>
                     <td class="px-4 py-2 text-sm">
-                        {{ formatDate(url.createdAt) }}
+                        {{ formatDate(url.created_at) }}
                     </td>
                     <td class="px-4 py-2 text-sm">
-                        {{ formatDate(url.expiresAt) }}
+                        {{ formatDate(url.expiration_at) }}
                     </td>
                     <td class="px-4 py-2 text-center">
-                        <span v-if="url.viewOnly">👁️</span>
-                        <span v-else>✏️</span>
+                        <span title="Only Read" v-if="url.view_only">👁️</span>
+                        <span title="Read-Write" v-else>✏️</span>
                     </td>
                     <td class="px-4 py-2 flex items-center gap-2">
                         <button
@@ -70,6 +70,9 @@
 import { ref, onMounted } from "vue";
 import { useUserStore } from "../stores/user";
 import axiosInstance from "../axiosInstance";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 
 const userStore = useUserStore();
 const sharedUrls = ref([]);
@@ -79,7 +82,9 @@ onMounted(async () => {
 });
 
 async function fetchSharedUrls() {
-    axiosInstance.get();
+    axiosInstance.get("/api/file/settings/get").then((resp) => {
+        sharedUrls.value = resp.data.sharedUrls;
+    });
 }
 
 function formatDate(dateStr) {
@@ -91,6 +96,10 @@ function deleteUrl(id) {
     // Call API to delete and then update sharedUrls
     // await deleteSharedUrl(id);
     sharedUrls.value = sharedUrls.value.filter((url) => url.id !== id);
+}
+
+function redirectToGetFile(shortUrl) {
+    router.push(`/file/get/${shortUrl}`);
 }
 
 function editUrl(url) {
