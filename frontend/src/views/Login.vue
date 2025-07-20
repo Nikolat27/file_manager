@@ -68,7 +68,9 @@ async function login() {
             showSuccess("User logged in successfully");
             router.push({ name: "home" });
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+            showError(err.response.data);
+        });
 }
 
 function onLogin() {

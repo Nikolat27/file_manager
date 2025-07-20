@@ -134,11 +134,11 @@ function handleUpload() {
                 Authorization: userStore.token,
             },
         })
-        .then((res) => {
-            console.log("Upload successful:", res);
+        .then(() => {
             showFileModal.value = false;
             selectedFile.value = null;
             customFileName.value = "";
+
             // Show a toast or refresh file list if needed
             showSuccess("file uploaded successfully");
             window.location.reload();
