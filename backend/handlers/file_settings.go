@@ -57,7 +57,7 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	password, salt, err := getPasswordAndSalt(r)
+	hashedPassword, salt, err := getPasswordAndSalt(r)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -99,7 +99,7 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := handler.Models.FileSettings.Create(fileObjectId, userObjectId, fileShortUrl.String(), salt, password, maxDownloads,
+	if err := handler.Models.FileSettings.Create(fileObjectId, userObjectId, fileShortUrl.String(), salt, hashedPassword, maxDownloads,
 		viewOnly, approvable, expireAt); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file share setting instance: %w", err))
 		return

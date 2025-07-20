@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"file_manager/utils"
@@ -153,21 +152,12 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	decodedHashedPassword, err := hex.DecodeString(fileShareSetting.HashedPassword)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	decodedSalt, err := hex.DecodeString(fileShareSetting.Salt)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	if !utils.ValidateHash([]byte(input.RawPassword), decodedHashedPassword, decodedSalt) {
-		utils.WriteError(w, http.StatusBadRequest, "password is invalid")
-		return
+	// If password is required and provided, validate it
+	if requirePassword && input.RawPassword != "" {
+		if err := utils.CheckFilePassword([]byte(fileShareSetting.HashedPassword), []byte(fileShareSetting.Salt), []byte(input.RawPassword)); err != nil {
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
 	}
 
 	file, err := handler.Models.File.GetOne(fileId)
