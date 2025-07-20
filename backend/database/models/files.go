@@ -56,7 +56,7 @@ func (file *FileModel) GetAll(ownerId primitive.ObjectID, page, pageSize int64) 
 
 	filter := bson.M{
 		"owner_id":  ownerId,
-		"folder_id": "",
+		"folder_id": primitive.NilObjectID,
 	}
 
 	projection := bson.M{

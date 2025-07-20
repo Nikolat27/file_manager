@@ -154,7 +154,8 @@ const router = useRouter();
 const userStore = useUserStore();
 
 const fileId = route.params.id;
-const plan = userStore.plan || "free"; // fallback to free if not set
+const folderId = route.params.folderId || route.query.folderId || "";
+const plan = userStore.plan || "free";
 
 if (!fileId) {
     router.replace({ name: "NotFound" });
@@ -181,6 +182,11 @@ function onSave() {
             : ""
     );
     formData.append("max_downloads", !isFree.value ? maxDownloads.value : "");
+
+    // Add folder_id
+    if (folderId) {
+        formData.append("folder_id", folderId);
+    }
 
     axiosInstance
         .post(`/api/file/settings/create/${fileId}`, formData, {

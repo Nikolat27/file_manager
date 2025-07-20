@@ -87,20 +87,19 @@ func (handler *Handler) GetFolderContents(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	data, err := json.MarshalIndent(&files, "", "\t")
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
+	response := map[string]any{
+		"folder_id": folderId,
+		"files":     files,
 	}
 
-	utils.WriteJSON(w, data)
+	utils.WriteJSONData(w, response)
 }
 
 func (handler *Handler) ValidateFolderId(folderId, userId primitive.ObjectID) error {
 	if folderId == primitive.NilObjectID {
 		return nil
 	}
-	
+
 	return handler.Models.Folder.Validate(folderId, userId)
 }
 

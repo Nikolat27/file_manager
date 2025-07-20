@@ -8,7 +8,7 @@
             <thead>
                 <tr class="bg-gray-100 text-gray-700">
                     <th class="text-left px-4 py-2 w-[70%]">Name</th>
-                    <th class="text-left px-4 py-2 w-[15%]">Updated At</th>
+                    <th class="text-left px-4 py-2 w-[15%]">Created At</th>
                     <th class="text-left px-4 py-2 w-[15%]">Expire At</th>
                     <th class="text-left px-4 py-2 w-[15%]">More</th>
                 </tr>
@@ -37,7 +37,12 @@
                                 ></path>
                             </svg>
                         </span>
-                        {{ folder.name }}
+
+                        <span
+                            @click="goToFolder(folder.id)"
+                            class="cursor-pointer hover:underline"
+                            >{{ folder.name }}</span
+                        >
                     </td>
                     <td class="px-4 py-2">
                         {{ formatDate(folder.created_at) }}
@@ -77,7 +82,9 @@
                         {{ file.name }}
                     </td>
                     <td class="px-4 py-2">{{ formatDate(file.created_at) }}</td>
-                    <td class="px-4 py-2">{{ formatDate(file.expire_at) }}</td>
+                    <td class="px-4 py-2">
+                        {{ file.expire_at ? formatDate(file.expire_at) : "-" }}
+                    </td>
                     <td
                         class="relative px-4 py-2 text-xl font-semibold cursor-pointer select-none pl-8 pb-4"
                     >
@@ -91,7 +98,7 @@
             </tbody>
         </table>
 
-        <!-- Modal Action Menu -->
+        <!-- Folder Action Modal -->
         <div
             v-if="showModal"
             class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-50"
@@ -100,6 +107,13 @@
                 class="bg-blue-600 rounded-2xl shadow-2xl p-6 w-72 flex flex-col gap-2 items-center"
             >
                 <template v-if="isFolderModal">
+                    <!-- Upload File Button (in folder modal) -->
+                    <button
+                        @click="openUploadFileModal"
+                        class="w-full border-white border-2 mb-3 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                    >
+                        Upload File
+                    </button>
                     <button
                         @click="
                             showRenameModal = true;
@@ -111,7 +125,7 @@
                     </button>
                     <button
                         @click="
-                            deleteFolderFromModal;
+                            deleteFolderFromModal();
                             showModal = false;
                         "
                         class="w-full py-2 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-700 transition"
@@ -145,6 +159,39 @@
                 >
                     Cancel
                 </button>
+            </div>
+        </div>
+
+        <!-- Upload File Modal (pops up when user chooses Upload File in a folder) -->
+        <div
+            v-if="showUploadFileModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-60"
+        >
+            <div
+                class="bg-blue-600 rounded-2xl shadow-2xl p-8 w-[90vw] max-w-md flex flex-col items-center gap-4"
+            >
+                <h2 class="text-xl font-semibold text-white mb-2">
+                    Upload File to {{ currentItem?.name }}
+                </h2>
+                <input
+                    type="file"
+                    ref="uploadFileInput"
+                    class="w-full px-4 py-2 rounded-xl border border-blue-300 bg-blue-50 text-blue-900"
+                />
+                <div class="flex gap-4 mt-4 w-full">
+                    <button
+                        @click="uploadFileToFolder"
+                        class="flex-1 py-2 rounded-xl bg-white text-blue-700 font-semibold hover:bg-blue-50 hover:text-blue-800 transition"
+                    >
+                        Upload
+                    </button>
+                    <button
+                        @click="showUploadFileModal = false"
+                        class="flex-1 py-2 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-700 transition"
+                    >
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -234,6 +281,8 @@ const showModal = ref(false);
 const isFolderModal = ref(false);
 const showRenameModal = ref(false);
 const showRenameFileModal = ref(false);
+const showUploadFileModal = ref(false);
+const uploadFileInput = ref(null);
 const currentItem = ref(null);
 const renameFolderName = ref("");
 const renameFileName = ref("");
@@ -254,7 +303,34 @@ function closeModal() {
     isFolderModal.value = false;
 }
 
-// --- File actions ---
+function openUploadFileModal() {
+    showUploadFileModal.value = true;
+    showModal.value = false;
+}
+
+function uploadFileToFolder() {
+    const fileInputEl = uploadFileInput.value;
+    if (!fileInputEl || !fileInputEl.files.length) return;
+
+    const file = fileInputEl.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder_id", currentItem.value.id);
+
+    axiosInstance
+        .post(`/api/file/create`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        })
+        .then(() => {
+            showSuccess("File uploaded successfully");
+            showUploadFileModal.value = false;
+            getFiles();
+        })
+        .catch((err) => {
+            showError(err.response.data);
+        });
+}
+
 const router = useRouter();
 function handleCreate() {
     router.push(`/file/setting/create/${currentItem.value.id}`);
@@ -273,11 +349,13 @@ function renameFile() {
             showSuccess("File renamed successfully");
             currentItem.value.name = renameFileName.value;
             showRenameFileModal.value = false;
+            getFiles();
         })
         .catch((err) => {
             showError(err.response.data);
         });
 }
+
 function handleEdit() {
     openRenameFileModal();
 }
@@ -287,6 +365,7 @@ function deleteFile(fileId) {
         .delete(`/api/file/delete/${fileId}`)
         .then(() => {
             showSuccess("file deleted successfully");
+            getFiles();
         })
         .catch((err) => {
             showError(err.response.data);
@@ -306,7 +385,6 @@ function handleDelete() {
     closeModal();
 }
 
-// --- Folder actions ---
 function renameFolder() {
     axiosInstance
         .put(`/api/folder/rename/${currentItem.value.id}`, {
@@ -316,6 +394,7 @@ function renameFolder() {
             showSuccess("Folder renamed successfully");
             currentItem.value.name = renameFolderName.value;
             showRenameModal.value = false;
+            getFolders();
         })
         .catch((err) => {
             showError(err.response.data);
@@ -326,6 +405,7 @@ function deleteFolder(folderId) {
         .delete(`/api/folder/delete/${folderId}`)
         .then(() => {
             showSuccess("folder deleted successfully");
+            getFolders();
         })
         .catch((err) => {
             showError(err.response.data);
@@ -354,6 +434,10 @@ function getFolders() {
     axiosInstance.get("/api/folder/get").then((resp) => {
         folders.value = resp.data;
     });
+}
+
+function goToFolder(id) {
+    router.push({ name: "FolderContents", params: { id } });
 }
 
 onMounted(async () => {

@@ -3,6 +3,7 @@ import HomeView from "../views/Home.vue";
 import LoginView from "../views/Login.vue";
 import RegisterView from "../views/Register.vue";
 import CreateFileSettingsView from "../views/CreateFileSettings.vue";
+import FolderContents from "../views/FolderContents.vue";
 
 const routes = [
     { path: "/", redirect: "/home" },
@@ -13,6 +14,11 @@ const routes = [
         path: "/file/setting/create/:id",
         name: "FileSettingCreate",
         component: CreateFileSettingsView,
+    },
+    {
+        path: "/folder/get/:id",
+        name: "FolderContents",
+        component: FolderContents,
     },
 ];
 
