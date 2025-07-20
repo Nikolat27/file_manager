@@ -93,9 +93,14 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err = handler.Models.FileSettings.Create(fileObjectId, fileShortUrl.String(), salt, password, maxDownloads,
-		viewOnly, approvable, expireAt); err != nil {
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
 
+	if err := handler.Models.FileSettings.Create(fileObjectId, userObjectId, fileShortUrl.String(), salt, password, maxDownloads,
+		viewOnly, approvable, expireAt); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file share setting instance: %w", err))
 		return
 	}
@@ -105,6 +110,32 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 	}
 
 	utils.WriteJSONData(w, data)
+}
+
+func (handler *Handler) GetFilesSettings(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	files, err := handler.Models.FileSettings.GetAll(userObjectId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	response := map[string]any{
+		"sharedUrls": files,
+	}
+
+	utils.WriteJSONData(w, response)
 }
 
 func getPasswordAndSalt(r *http.Request) (string, string, error) {

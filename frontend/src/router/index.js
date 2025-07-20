@@ -1,21 +1,27 @@
 import { createRouter, createWebHistory } from "vue-router";
+import HomeLayout from "../layout/HomeLayout.vue";
 import HomeView from "../views/Home.vue";
 import LoginView from "../views/Login.vue";
 import RegisterView from "../views/Register.vue";
 import CreateFileSettingsView from "../views/CreateFileSettings.vue";
 import FolderContents from "../views/FolderContents.vue";
+import ShortUrlsView from "../views/ShortUrls.vue";
 
 const routes = [
     { path: "/", redirect: "/home" },
     {
         path: "/home",
-        name: "home",
-        component: HomeView,
+        component: HomeLayout,
         children: [
             {
-                path: "photos",
-                name: "photos",
-                component: FolderContents,
+                path: "",
+                name: "home",
+                component: HomeView,
+            },
+            {
+                path: "shared-urls",
+                name: "sharedUrls",
+                component: ShortUrlsView,
             },
         ],
     },

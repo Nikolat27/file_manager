@@ -104,6 +104,7 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
+
 	utils.WriteJSON(w, data)
 }
 

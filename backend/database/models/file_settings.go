@@ -16,6 +16,7 @@ type FileSettingModel struct {
 
 type FileSettings struct {
 	Id             primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	UserId         primitive.ObjectID `json:"user_id" bson:"user_id"`
 	FileId         primitive.ObjectID `json:"file_id" bson:"file_id"`
 	ShortUrl       string             `json:"short_url" bson:"short_url"`
 	Salt           string             `json:"salt" bson:"salt"`
@@ -29,7 +30,7 @@ type FileSettings struct {
 
 const FileSettingsCollectionName = "file_settings"
 
-func (file *FileSettingModel) Create(fileId primitive.ObjectID, shortUrl, salt, hashedPassword string, maxDownloads int64,
+func (file *FileSettingModel) Create(fileId, userId primitive.ObjectID, shortUrl, salt, hashedPassword string, maxDownloads int64,
 	viewOnly, approvable bool, expireAt time.Time) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -37,6 +38,7 @@ func (file *FileSettingModel) Create(fileId primitive.ObjectID, shortUrl, salt, 
 
 	newFile := &FileSettings{
 		FileId:         fileId,
+		UserId:         userId,
 		ShortUrl:       shortUrl,
 		Salt:           salt,
 		HashedPassword: hashedPassword,
@@ -72,6 +74,29 @@ func (file *FileSettingModel) Get(fileId primitive.ObjectID) (*FileSettings, err
 	}
 
 	return &fileInstance, nil
+}
+
+func (file *FileSettingModel) GetAll(userId primitive.ObjectID) ([]FileSettings, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"user_id": userId,
+	}
+
+	var settings []FileSettings
+	cursor, err := file.db.Collection(FileSettingsCollectionName).Find(ctx, filter)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
+	}
+
+	if err := cursor.All(ctx, &settings); err != nil {
+		return nil, err
+	}
+
+	return settings, nil
 }
 
 func (file *FileSettingModel) Delete(fileId primitive.ObjectID) error {
