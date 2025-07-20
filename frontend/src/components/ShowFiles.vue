@@ -78,11 +78,49 @@
                     <td class="px-4 py-2">{{ formatDate(file.created_at) }}</td>
                     <td class="px-4 py-2">{{ formatDate(file.expire_at) }}</td>
                     <td
-                        @click="goToEdit(file.id)"
                         class="relative px-4 py-2 text-xl font-semibold cursor-pointer select-none pl-8 pb-4"
                     >
-                        Edit
+                        <span
+                            @click="openModal(file.id)"
+                            class="hover:text-blue-600 text-2xl"
+                            >…</span
+                        >
                     </td>
+
+                    <!-- Modal Action Menu -->
+                    <div
+                        v-if="showModal"
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-50"
+                    >
+                        <div
+                            class="bg-blue-600 rounded-2xl shadow-2xl p-6 w-72 flex flex-col gap-2 items-center"
+                        >
+                            <button
+                                @click="handleCreate"
+                                class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                            >
+                                Create
+                            </button>
+                            <button
+                                @click="handleEdit"
+                                class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                            >
+                                Edit
+                            </button>
+                            <button
+                                @click="handleDelete"
+                                class="w-full px-4 py-2 rounded-xl text-red-200 text-lg font-semibold hover:bg-red-600 hover:text-white transition cursor-pointer"
+                            >
+                                Delete
+                            </button>
+                            <button
+                                @click="closeModal"
+                                class="mt-3 w-full px-4 py-2 rounded-xl bg-white text-blue-600 font-semibold hover:bg-blue-50 hover:text-blue-700 transition cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
                 </tr>
             </tbody>
         </table>
@@ -92,6 +130,32 @@
 import { ref, onMounted } from "vue";
 import axiosInstance from "../axiosInstance";
 import { useRouter } from "vue-router";
+
+const showModal = ref(false);
+const currentFileId = ref(null);
+
+function openModal(fileId) {
+    showModal.value = true;
+    currentFileId.value = fileId;
+}
+function closeModal() {
+    showModal.value = false;
+    currentFileId.value = null;
+}
+
+// Action handlers
+function handleCreate() {
+    router.push(`/file/setting/create/${currentFileId.value}`)
+}
+
+function handleEdit() {
+    alert("Edit for file " + currentFileId.value);
+    closeModal();
+}
+function handleDelete() {
+    alert("Delete for file " + currentFileId.value);
+    closeModal();
+}
 
 const router = useRouter();
 

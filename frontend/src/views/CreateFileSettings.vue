@@ -3,13 +3,15 @@
         Error: File ID is required!
     </div>
     <div v-else>
-        <div class="min-h-screen flex items-center justify-center bg-blue-50 z-20">
+        <div
+            class="min-h-screen flex items-center justify-center bg-blue-50 z-20"
+        >
             <form
                 class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg flex flex-col gap-6"
                 @submit.prevent="onSave"
             >
                 <h2 class="text-2xl font-bold text-blue-700 mb-2">
-                    Edit File Settings
+                    Create File Settings
                 </h2>
                 <div
                     class="mb-4 text-blue-800 font-semibold flex items-center gap-2"
@@ -133,7 +135,7 @@
                     type="submit"
                     class="w-full py-3 bg-blue-600 hover:bg-blue-700 transition-colors text-white rounded-xl font-semibold text-lg shadow"
                 >
-                    Save Settings
+                    Create Settings
                 </button>
             </form>
         </div>
@@ -145,6 +147,7 @@ import { ref, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axiosInstance from "../axiosInstance";
 import { useUserStore } from "../stores/user";
+import { showError, showSuccess } from "../utils/toast";
 
 const route = useRoute();
 const router = useRouter();
@@ -183,13 +186,11 @@ function onSave() {
         .post(`/api/file/settings/create/${fileId}`, formData, {
             headers: { "Content-Type": "multipart/form-data" },
         })
-        .then((res) => {
-            // Show success toast or redirect
-            console.log("Settings saved!", res.data);
+        .then(() => {
+            showSuccess("Settings saved successfully");
         })
         .catch((err) => {
-            // Show error toast
-            console.error("Failed to save settings", err);
+            showError(err.response.data);
         });
 }
 </script>
