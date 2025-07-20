@@ -110,6 +110,30 @@ func (folder *FolderModel) GetAll(ownerId primitive.ObjectID, page, pageSize int
 	return folders, nil
 }
 
+func (folder *FolderModel) GetNameById(id primitive.ObjectID) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"_id": id,
+	}
+
+	projection := bson.M{
+		"name": 1,
+	}
+
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
+
+	var folderInstance Folder
+
+	if err := folder.db.Collection("folders").FindOne(ctx, filter, findOptions).Decode(&folderInstance); err != nil {
+		return "", err
+	}
+
+	return folderInstance.Name, nil
+}
+
 func (folder *FolderModel) Validate(folderId, ownerId primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

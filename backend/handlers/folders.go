@@ -87,9 +87,16 @@ func (handler *Handler) GetFolderContents(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	folderName, err := handler.Models.Folder.GetNameById(folderObjectId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
 	response := map[string]any{
-		"folder_id": folderId,
-		"files":     files,
+		"folder_id":   folderId,
+		"folder_name": folderName,
+		"files":       files,
 	}
 
 	utils.WriteJSONData(w, response)

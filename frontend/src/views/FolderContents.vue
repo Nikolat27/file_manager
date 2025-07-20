@@ -17,14 +17,24 @@
                     </svg>
                     Back
                 </button>
-                <span class="text-2xl font-bold text-blue-800"
-                    >Folder Contents</span
-                >
+                <span class="text-2xl font-bold text-blue-800">
+                    Folder Contents
+                </span>
                 <span
                     v-if="folderName"
                     class="ml-4 text-lg text-gray-700 font-semibold"
                     >/ {{ folderName }}</span
                 >
+            </div>
+
+            <!-- Upload File Button -->
+            <div class="flex w-full justify-end">
+                <button
+                    @click="showUploadFileModal = true"
+                    class="px-6 py-2 mb-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow"
+                >
+                    Upload File
+                </button>
             </div>
 
             <table
@@ -34,13 +44,13 @@
                     <tr class="bg-gray-100 text-gray-700">
                         <th class="text-left px-4 py-2 w-[60%]">Name</th>
                         <th class="text-left px-4 py-2 w-[20%]">Type</th>
-                        <th class="text-left px-4 py-2 w-[20%]">Updated At</th>
+                        <th class="text-left px-4 py-2 w-[20%]">Created At</th>
                         <th class="text-left px-4 py-2 w-[15%]">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <template v-if="folders.length">
-                        <tr v-for="sub in folders" :key="sub.id">
+                        <tr v-for="folder in folders" :key="folder.id">
                             <td class="px-4 py-2 flex items-center gap-x-2">
                                 <svg
                                     viewBox="0 0 40 40"
@@ -57,15 +67,15 @@
                                         fill="#a0c4ff"
                                     ></path>
                                 </svg>
-                                {{ sub.name }}
+                                {{ folder.name }}
                             </td>
                             <td class="px-4 py-2">Folder</td>
                             <td class="px-4 py-2">
-                                {{ formatDate(sub.created_at) }}
+                                {{ formatDate(folder.created_at) }}
                             </td>
                             <td class="px-4 py-2">
                                 <button
-                                    @click="goToFolder(sub.id)"
+                                    @click="goToFolder(folder.id)"
                                     class="text-blue-600 hover:text-blue-800 font-semibold"
                                 >
                                     Open
@@ -99,21 +109,129 @@
                             </td>
                             <td class="px-4 py-2">
                                 <button
-                                    @click="downloadFile(file.id)"
-                                    class="text-blue-600 hover:text-blue-800 font-semibold"
+                                    @click="openFileModal(file)"
+                                    class="text-2xl font-bold text-blue-700 hover:text-blue-900"
                                 >
-                                    Download
+                                    …
                                 </button>
                             </td>
                         </tr>
                     </template>
                     <tr v-if="!folders.length && !files.length">
                         <td colspan="4" class="py-8 text-center text-gray-400">
-                            No files or subfolders found in this folder.
+                            No files found in this folder.
                         </td>
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Upload File Modal -->
+        <div
+            v-if="showUploadFileModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-60"
+        >
+            <div
+                class="bg-blue-600 rounded-2xl shadow-2xl p-8 w-[90vw] max-w-md flex flex-col items-center gap-4"
+            >
+                <h2 class="text-xl font-semibold text-white mb-2">
+                    Upload File to {{ folderName || "Folder" }}
+                </h2>
+                <input
+                    type="file"
+                    ref="uploadFileInput"
+                    class="w-full px-4 py-2 rounded-xl border border-blue-300 bg-blue-50 text-blue-900"
+                />
+                <div class="flex gap-4 mt-4 w-full">
+                    <button
+                        @click="uploadFileToCurrentFolder"
+                        class="flex-1 py-2 rounded-xl bg-white text-blue-700 font-semibold hover:bg-blue-50 hover:text-blue-800 transition"
+                    >
+                        Upload
+                    </button>
+                    <button
+                        @click="showUploadFileModal = false"
+                        class="flex-1 py-2 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-700 transition"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Actions Modal -->
+        <div
+            v-if="showFileModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-50"
+        >
+            <div
+                class="bg-blue-600 rounded-2xl shadow-2xl p-8 w-80 flex flex-col gap-4 items-center"
+            >
+                <button
+                    @click="downloadFile(selectedFile.id)"
+                    class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                >
+                    Download
+                </button>
+                <button
+                    @click="openRenameFileModal"
+                    class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                >
+                    Rename
+                </button>
+                <button
+                    @click="createSettings"
+                    class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                >
+                    Create Settings
+                </button>
+                <button
+                    @click="deleteFileFromModal"
+                    class="w-full py-2 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-700 transition"
+                >
+                    Delete
+                </button>
+                <button
+                    @click="closeFileModal"
+                    class="mt-2 w-full px-4 py-2 rounded-xl bg-white text-blue-600 font-semibold hover:bg-blue-50 hover:text-blue-700 transition cursor-pointer"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+
+        <!-- Rename File Modal -->
+        <div
+            v-if="showRenameFileModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-60"
+        >
+            <div
+                class="bg-blue-600 rounded-2xl shadow-2xl p-8 w-96 flex flex-col items-center gap-4"
+            >
+                <h2 class="text-xl font-semibold text-white mb-2">
+                    Rename File
+                </h2>
+                <input
+                    v-model="renameFileName"
+                    type="text"
+                    placeholder="Enter new file name"
+                    class="w-full px-4 py-2 rounded-xl border border-blue-300 focus:outline-none focus:border-white bg-blue-50 text-blue-900 font-semibold"
+                />
+                <div class="flex gap-4 mt-4 w-full">
+                    <button
+                        @click="renameFile"
+                        class="flex-1 py-2 rounded-xl bg-white text-blue-700 font-semibold hover:bg-blue-50 hover:text-blue-800 transition"
+                    >
+                        Rename
+                    </button>
+                    <button
+                        @click="showRenameFileModal = false"
+                        class="flex-1 py-2 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-700 transition"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -122,41 +240,154 @@
 import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axiosInstance from "../axiosInstance";
+import { showError, showSuccess } from "../utils/toast";
 
 const route = useRoute();
 const router = useRouter();
 
-const folderId = route.params.id || ""; // <- gets id from URL (e.g. /folder/:id)
+const folderId = route.params.id || "";
 
-const folderName = ref("Folder Name"); // Will be filled after fetching
+const folderName = ref("");
 const folders = ref([]); // Subfolders
 const files = ref([]); // Files
 
-function goBack() {
-    router.back();
+const showFileModal = ref(false);
+const showRenameFileModal = ref(false);
+const selectedFile = ref(null);
+const renameFileName = ref("");
+
+// Upload modal state
+const showUploadFileModal = ref(false);
+const uploadFileInput = ref(null);
+
+// Load folder contents
+function fetchFolderContents(id) {
+    axiosInstance
+        .get(`/api/folder/get/${id}`)
+        .then((resp) => {
+            folders.value = resp.data.folders || [];
+            files.value = resp.data.files || [];
+            folderName.value = resp.data.folder_name || "";
+        })
+        .catch((err) => {
+            console.error(err.response?.data || err);
+        });
 }
 
-function downloadFile(id) {
-    // Implement file download logic
-}
 function formatDate(dateStr) {
     if (!dateStr) return "";
     return new Date(dateStr).toLocaleDateString("en-CA");
 }
 
-function fetchFolderContents(id) {
+function goBack() {
+    router.back();
+}
+
+function goToFolder(id) {
+    router.push({ name: "FolderContents", params: { id } });
+}
+
+// File modal logic
+function openFileModal(file) {
+    selectedFile.value = file;
+    showFileModal.value = true;
+}
+function closeFileModal() {
+    showFileModal.value = false;
+    selectedFile.value = null;
+}
+function openRenameFileModal() {
+    renameFileName.value = selectedFile.value?.name || "";
+    showRenameFileModal.value = true;
+    showFileModal.value = false;
+}
+
+function renameFile() {
     axiosInstance
-        .get(`/api/folder/get/${id}`)
-        .then((resp) => {
-            files.value = resp.data.files;
-            console.log(resp);
+        .put(`/api/file/rename/${selectedFile.value.id}`, {
+            name: renameFileName.value,
+        })
+        .then(() => {
+            showSuccess("File renamed successfully");
+            showRenameFileModal.value = false;
+            fetchFolderContents(folderId);
         })
         .catch((err) => {
-            console.error(err.response.data);
+            showError(err.response?.data || "Rename failed");
+        });
+}
+function deleteFileFromModal() {
+    axiosInstance
+        .delete(`/api/file/delete/${selectedFile.value.id}`)
+        .then(() => {
+            showSuccess("File deleted successfully");
+            showFileModal.value = false;
+            fetchFolderContents(folderId);
+        })
+        .catch((err) => {
+            showError(err.response?.data || "Delete failed");
+        });
+}
+function createSettings() {
+    // Redirect to settings page for file
+    router.push(
+        `/file/setting/create/${selectedFile.value.id}?folderId=${folderId}`
+    );
+    closeFileModal();
+}
+async function downloadFile(fileId) {
+    try {
+        const res = await axiosInstance.get(`/api/file/download/${fileId}`, {
+            responseType: "blob",
+        });
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement("a");
+        // Try to get file name from Content-Disposition header
+        let filename = "downloaded_file";
+        const disp = res.headers["content-disposition"];
+        if (disp && disp.includes("filename=")) {
+            filename = disp
+                .split("filename=")[1]
+                .replace(/"/g, "")
+                .split(";")[0];
+        }
+        link.href = url;
+        link.setAttribute("download", filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        showSuccess("File download started");
+        closeFileModal();
+    } catch (err) {
+        showError("Download failed");
+    }
+}
+
+// ---- Upload logic ----
+function uploadFileToCurrentFolder() {
+    const input = uploadFileInput.value;
+    if (!input || !input.files.length) return;
+
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder_id", folderId);
+
+    axiosInstance
+        .post(`/api/file/create`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        })
+        .then(() => {
+            showSuccess("File uploaded successfully");
+            showUploadFileModal.value = false;
+            fetchFolderContents(folderId);
+        })
+        .catch((err) => {
+            showError(err.response?.data || "Upload failed");
         });
 }
 
 onMounted(() => {
-    fetchFolderContents(route.params.id);
+    fetchFolderContents(folderId);
 });
 </script>
