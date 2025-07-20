@@ -55,7 +55,8 @@ func (file *FileModel) GetAll(ownerId primitive.ObjectID, page, pageSize int64) 
 	defer cancel()
 
 	filter := bson.M{
-		"owner_id": ownerId,
+		"owner_id":  ownerId,
+		"folder_id": "",
 	}
 
 	projection := bson.M{
@@ -328,7 +329,7 @@ func (file *FileModel) GetUserFileAddresses(userId primitive.ObjectID) ([]string
 		var result struct {
 			Address string `bson:"address"`
 		}
-		
+
 		if err := cursor.Decode(&result); err != nil {
 			return nil, err
 		}
