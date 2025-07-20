@@ -72,6 +72,11 @@ func (router *AppRouter) registerFileRoutes(handler *handlers.Handler) {
 	router.CoreRouter.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
 }
 
+// registerFileSettingsRoutes -> File Settings
+func (router *AppRouter) registerFileSettingsRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)
+}
+
 // registerFileRoutes -> Folder
 func (router *AppRouter) registerFolderRoutes(handler *handlers.Handler) {
 	router.CoreRouter.HandlerFunc("POST", "/api/folder/create", handler.CreateFolder)
@@ -79,11 +84,6 @@ func (router *AppRouter) registerFolderRoutes(handler *handlers.Handler) {
 	router.CoreRouter.HandlerFunc("GET", "/api/folder/get/:id", handler.GetFolderContents)
 	router.CoreRouter.HandlerFunc("PUT", "/api/folder/rename/:id", handler.RenameFolder)
 	router.CoreRouter.HandlerFunc("DELETE", "/api/folder/delete/:id", handler.DeleteFolder)
-}
-
-// registerFileSettingsRoutes -> File Settings
-func (router *AppRouter) registerFileSettingsRoutes(handler *handlers.Handler) {
-	router.CoreRouter.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)
 }
 
 // registerApprovalRoutes -> Approvals

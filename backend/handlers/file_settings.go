@@ -95,29 +95,16 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 
 	if err = handler.Models.FileSettings.Create(fileObjectId, fileShortUrl.String(), salt, password, maxDownloads,
 		viewOnly, approvable, expireAt); err != nil {
-		
+
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file share setting instance: %w", err))
 		return
 	}
 
-	utils.WriteJSON(w, fileShortUrl.String())
-}
-
-func getApproval(r *http.Request, plan string) (bool, error) {
-	approvalStr := r.FormValue("approvable")
-	if approvalStr == "" {
-		return false, nil
+	data := map[string]string{
+		"short_url": fileShortUrl.String(),
 	}
 
-	if plan == "" {
-		return false, errors.New("user`s plan is missing")
-	}
-
-	if plan == "free" {
-		return false, errors.New("users with 'free' plan cant make approval required URLs")
-	}
-
-	return strconv.ParseBool(approvalStr)
+	utils.WriteJSONData(w, data)
 }
 
 func getPasswordAndSalt(r *http.Request) (string, string, error) {
@@ -139,6 +126,23 @@ func getPasswordAndSalt(r *http.Request) (string, string, error) {
 	return encodedPasswordHash, encodedSalt, nil
 }
 
+func getApproval(r *http.Request, plan string) (bool, error) {
+	approvalStr := r.FormValue("approvable")
+	if approvalStr == "" || approvalStr == "false" {
+		return false, nil
+	}
+
+	if plan == "" {
+		return false, errors.New("user`s plan is missing")
+	}
+
+	if plan == "free" {
+		return false, errors.New("users with 'free' plan cant make approval required URLs")
+	}
+
+	return strconv.ParseBool(approvalStr)
+}
+
 func getMaxDownloads(r *http.Request, plan string) (int64, error) {
 	maxDownloadsStr := r.FormValue("max_downloads")
 	if maxDownloadsStr == "" {
@@ -158,7 +162,7 @@ func getMaxDownloads(r *http.Request, plan string) (int64, error) {
 
 func getViewOnly(r *http.Request, plan string) (bool, error) {
 	viewOnlyStr := r.FormValue("view_only")
-	if viewOnlyStr == "" {
+	if viewOnlyStr == "" || viewOnlyStr == "false" {
 		return false, nil
 	}
 
@@ -174,7 +178,7 @@ func getViewOnly(r *http.Request, plan string) (bool, error) {
 }
 
 func getExpireAt(r *http.Request, plan string) (time.Time, error) {
-	expireAtStr := r.FormValue("expire_at")
+	expireAtStr := r.FormValue("expiration_at")
 	if expireAtStr == "" {
 		return time.Time{}, nil
 	}

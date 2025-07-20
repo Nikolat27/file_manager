@@ -78,9 +78,10 @@
                     <td class="px-4 py-2">{{ formatDate(file.created_at) }}</td>
                     <td class="px-4 py-2">{{ formatDate(file.expire_at) }}</td>
                     <td
-                        class="relative px-4 py-2 text-2xl font-bold cursor-pointer select-none pl-8 pb-4"
+                        @click="goToEdit(file.id)"
+                        class="relative px-4 py-2 text-xl font-semibold cursor-pointer select-none pl-8 pb-4"
                     >
-                        ...
+                        Edit
                     </td>
                 </tr>
             </tbody>
@@ -90,6 +91,9 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import axiosInstance from "../axiosInstance";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 
 const files = ref([]);
 const folders = ref([]);
@@ -109,6 +113,14 @@ function getFolders() {
     axiosInstance.get("/api/folder/get").then((resp) => {
         folders.value = resp.data;
     });
+}
+
+function goToEdit(id) {
+    if (id) {
+        router.push(`/file/edit/${id}`);
+    } else {
+        alert("No file id provided!");
+    }
 }
 
 onMounted(async () => {
