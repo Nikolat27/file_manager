@@ -89,12 +89,19 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusUnauthorized, errors.New("invalid username or password"))
 		return
 	}
-	
+
 	token, err := handler.PasetoMaker.CreateToken(user.Username, user.Id.Hex(), user.Plan, 24*time.Hour)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("error creating token: %w", err))
 		return
 	}
 
-	utils.WriteJSON(w, token)
+	response := map[string]interface{}{
+		"token":    token,
+		"userId":   user.Id.Hex(),
+		"username": user.Username,
+		"plan":     user.Plan,
+	}
+
+	utils.WriteJSONData(w, response)
 }

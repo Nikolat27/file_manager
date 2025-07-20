@@ -3,7 +3,7 @@
         <span class="text-[22px] font-bold">All files</span>
 
         <table
-            class="w-[81%] border border-blue-200 rounded-xl overflow-hidden"
+            class="w-[81%] h-auto border border-blue-200 rounded-xl overflow-hidden"
         >
             <thead>
                 <tr class="bg-gray-100 text-gray-700">
@@ -44,13 +44,10 @@
                     <td class="px-4 py-2">2025-07-19</td>
                     <td class="px-4 py-2">2025-07-19</td>
                     <td
-                        class="px-4 py-2 text-2xl font-bold cursor-pointer select-none pl-8 pb-4"
+                        class="relative px-4 py-2 text-2xl font-bold cursor-pointer select-none pl-8 pb-4"
                     >
                         ...
                     </td>
-                    <div class="absolute ">
-
-                    </div>
                 </tr>
             </tbody>
         </table>
