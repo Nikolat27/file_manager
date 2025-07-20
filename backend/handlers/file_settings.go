@@ -180,7 +180,7 @@ func getViewOnly(r *http.Request, plan string) (bool, error) {
 func getExpireAt(r *http.Request, plan string) (time.Time, error) {
 	expireAtStr := r.FormValue("expiration_at")
 	if expireAtStr == "" {
-		return time.Time{}, nil
+		return time.Now().Add(7 * time.Hour * 24), nil
 	}
 
 	if plan == "" {
