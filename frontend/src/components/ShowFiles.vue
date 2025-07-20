@@ -14,9 +14,10 @@
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="folder in folders">
+                <tr v-for="folder in folders" :key="'folder-' + folder.id">
                     <td class="px-4 py-2 flex flex-row items-center gap-x-2 z">
                         <span title="folder">
+                            <!-- FOLDER ICON SVG HERE (unchanged) -->
                             <svg
                                 viewBox="0 0 40 40"
                                 fill="none"
@@ -44,18 +45,23 @@
                     <td class="px-4 py-2">
                         {{ formatDate(folder.created_at) }}
                     </td>
-                    <td class="px-4 py-2">
-                        {{ formatDate(folder.expire_at) }}
+                    <td class="px-4 py-2 text-sm">
+                        no expiration for folders
                     </td>
                     <td
                         class="relative px-4 py-2 text-2xl font-bold cursor-pointer select-none pl-8 pb-4"
                     >
-                        ...
+                        <span
+                            @click="openModal(folder, true)"
+                            class="hover:text-blue-600 text-2xl"
+                            >…</span
+                        >
                     </td>
                 </tr>
-                <tr v-for="file in files">
+                <tr v-for="file in files" :key="'file-' + file.id">
                     <td class="px-4 py-2 flex flex-row items-center gap-x-2">
                         <span title="file">
+                            <!-- FILE ICON SVG HERE (unchanged) -->
                             <svg
                                 class="mr-2"
                                 xmlns="http://www.w3.org/2000/svg"
@@ -81,83 +87,180 @@
                         class="relative px-4 py-2 text-xl font-semibold cursor-pointer select-none pl-8 pb-4"
                     >
                         <span
-                            @click="openModal(file.id)"
+                            @click="openModal(file, false)"
                             class="hover:text-blue-600 text-2xl"
                             >…</span
                         >
                     </td>
-
-                    <!-- Modal Action Menu -->
-                    <div
-                        v-if="showModal"
-                        class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-50"
-                    >
-                        <div
-                            class="bg-blue-600 rounded-2xl shadow-2xl p-6 w-72 flex flex-col gap-2 items-center"
-                        >
-                            <button
-                                @click="handleCreate"
-                                class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
-                            >
-                                Create
-                            </button>
-                            <button
-                                @click="handleEdit"
-                                class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
-                            >
-                                Edit
-                            </button>
-                            <button
-                                @click="handleDelete"
-                                class="w-full px-4 py-2 rounded-xl text-red-200 text-lg font-semibold hover:bg-red-600 hover:text-white transition cursor-pointer"
-                            >
-                                Delete
-                            </button>
-                            <button
-                                @click="closeModal"
-                                class="mt-3 w-full px-4 py-2 rounded-xl bg-white text-blue-600 font-semibold hover:bg-blue-50 hover:text-blue-700 transition cursor-pointer"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
                 </tr>
             </tbody>
         </table>
+
+        <!-- Modal Action Menu -->
+        <div
+            v-if="showModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-50"
+        >
+            <div
+                class="bg-blue-600 rounded-2xl shadow-2xl p-6 w-72 flex flex-col gap-2 items-center"
+            >
+                <template v-if="isFolderModal">
+                    <button
+                        @click="
+                            showRenameModal = true;
+                            showModal = false;
+                        "
+                        class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                    >
+                        Rename
+                    </button>
+                </template>
+                <button
+                    v-if="!isFolderModal"
+                    @click="handleCreate"
+                    class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                >
+                    Create
+                </button>
+                <button
+                    v-if="!isFolderModal"
+                    @click="handleEdit"
+                    class="w-full px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
+                >
+                    Edit
+                </button>
+                <button
+                    @click="handleDelete"
+                    class="w-full px-4 py-2 rounded-xl text-red-200 text-lg font-semibold hover:bg-red-600 hover:text-white transition cursor-pointer"
+                >
+                    Delete
+                </button>
+                <button
+                    @click="closeModal"
+                    class="mt-3 w-full px-4 py-2 rounded-xl bg-white text-blue-600 font-semibold hover:bg-blue-50 hover:text-blue-700 transition cursor-pointer"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+
+        <!-- Rename Folder Modal -->
+        <div
+            v-if="showRenameModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-60"
+        >
+            <div
+                class="bg-blue-600 rounded-2xl shadow-2xl p-8 w-[90vw] max-w-md flex flex-col items-center gap-4"
+            >
+                <h2 class="text-xl font-semibold text-white mb-2">
+                    Rename Folder
+                </h2>
+                <input
+                    v-model="renameFolderName"
+                    type="text"
+                    placeholder="Enter new folder name"
+                    class="w-full px-4 py-2 rounded-xl border border-blue-300 focus:outline-none focus:border-white bg-blue-50 text-blue-900 font-semibold"
+                />
+                <div class="flex gap-4 mt-4 w-full">
+                    <button
+                        @click="renameFolder"
+                        class="flex-1 py-2 rounded-xl bg-white text-blue-700 font-semibold hover:bg-blue-50 hover:text-blue-800 transition"
+                    >
+                        Rename
+                    </button>
+                    <button
+                        @click="showRenameModal = false"
+                        class="flex-1 py-2 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-700 transition"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 <script setup>
 import { ref, onMounted } from "vue";
 import axiosInstance from "../axiosInstance";
 import { useRouter } from "vue-router";
+import { showError, showSuccess } from "../utils/toast";
 
 const showModal = ref(false);
-const currentFileId = ref(null);
+const isFolderModal = ref(false);
+const showRenameModal = ref(false);
+const currentItem = ref(null);
+const renameFolderName = ref("");
 
-function openModal(fileId) {
+function openModal(item, isFolder) {
     showModal.value = true;
-    currentFileId.value = fileId;
+    isFolderModal.value = isFolder;
+    currentItem.value = item;
+    if (isFolder) {
+        renameFolderName.value = item.name;
+    }
 }
 function closeModal() {
     showModal.value = false;
-    currentFileId.value = null;
+    currentItem.value = null;
+    isFolderModal.value = false;
 }
 
-// Action handlers
-function handleCreate() {
-    router.push(`/file/setting/create/${currentFileId.value}`)
-}
-
-function handleEdit() {
-    alert("Edit for file " + currentFileId.value);
-    closeModal();
-}
-function handleDelete() {
-    alert("Delete for file " + currentFileId.value);
-    closeModal();
-}
-
+// --- File actions ---
 const router = useRouter();
+function handleCreate() {
+    router.push(`/file/setting/create/${currentItem.value.id}`);
+    closeModal();
+}
+function handleEdit() {
+    alert("Edit for file " + currentItem.value.id);
+    closeModal();
+}
+
+function deleteFile(fileId) {
+    axiosInstance
+        .delete(`/api/file/delete/${fileId}`)
+        .then(() => {
+            showSuccess("file deleted successfully");
+        })
+        .catch((err) => {
+            showError(err.response.data);
+        });
+}
+
+function handleDelete() {
+    if (isFolderModal.value) {
+        deleteFolder(currentItem.value.id);
+    } else {
+        deleteFile(currentItem.value.id);
+    }
+    closeModal();
+}
+
+// --- Folder actions ---
+function renameFolder() {
+    axiosInstance
+        .put(`/api/folder/rename/${currentItem.value.id}`, {
+            name: renameFolderName.value,
+        })
+        .then(() => {
+            showSuccess("Folder renamed successfully");
+            currentItem.value.name = renameFolderName.value;
+            showRenameModal.value = false;
+        })
+        .catch((err) => {
+            showError(err.response.data);
+        });
+}
+function deleteFolder(folderId) {
+    axiosInstance
+        .delete(`/api/folder/delete/${folderId}`)
+        .then(() => {
+            showSuccess("folder deleted successfully");
+        })
+        .catch((err) => {
+            showError(err.response.data);
+        });
+}
 
 const files = ref([]);
 const folders = ref([]);
@@ -177,14 +280,6 @@ function getFolders() {
     axiosInstance.get("/api/folder/get").then((resp) => {
         folders.value = resp.data;
     });
-}
-
-function goToEdit(id) {
-    if (id) {
-        router.push(`/file/edit/${id}`);
-    } else {
-        alert("No file id provided!");
-    }
 }
 
 onMounted(async () => {
