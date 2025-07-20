@@ -361,7 +361,6 @@ func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId 
 	return nil
 }
 
-// Handle download in front with GetFile func (prefered) due to password required and approable files
 func (handler *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	fileShortUrl, err := utils.ParseIdParam(r.Context())
 	if err != nil {
