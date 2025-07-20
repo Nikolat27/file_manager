@@ -9,14 +9,14 @@
                 <tr class="bg-gray-100 text-gray-700">
                     <th class="text-left px-4 py-2 w-[70%]">Name</th>
                     <th class="text-left px-4 py-2 w-[15%]">Updated At</th>
-                    <th class="text-left px-4 py-2 w-[15%]">Modified At</th>
+                    <th class="text-left px-4 py-2 w-[15%]">Expire At</th>
                     <th class="text-left px-4 py-2 w-[15%]">More</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
+                <tr v-for="folder in folders">
                     <td class="px-4 py-2 flex flex-row items-center gap-x-2 z">
-                        <span>
+                        <span title="folder">
                             <svg
                                 viewBox="0 0 40 40"
                                 fill="none"
@@ -39,10 +39,44 @@
                                 ></path>
                             </svg>
                         </span>
-                        example.txt
+                        {{ folder.name }}
                     </td>
-                    <td class="px-4 py-2">2025-07-19</td>
-                    <td class="px-4 py-2">2025-07-19</td>
+                    <td class="px-4 py-2">
+                        {{ formatDate(folder.created_at) }}
+                    </td>
+                    <td class="px-4 py-2">
+                        {{ formatDate(folder.expire_at) }}
+                    </td>
+                    <td
+                        class="relative px-4 py-2 text-2xl font-bold cursor-pointer select-none pl-8 pb-4"
+                    >
+                        ...
+                    </td>
+                </tr>
+                <tr v-for="file in files">
+                    <td class="px-4 py-2 flex flex-row items-center gap-x-2">
+                        <span title="file">
+                            <svg
+                                class="mr-2"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                width="24"
+                                height="24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M7 3h6l5 5v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm6 0v5h5"
+                                />
+                            </svg>
+                        </span>
+                        {{ file.name }}
+                    </td>
+                    <td class="px-4 py-2">{{ formatDate(file.created_at) }}</td>
+                    <td class="px-4 py-2">{{ formatDate(file.expire_at) }}</td>
                     <td
                         class="relative px-4 py-2 text-2xl font-bold cursor-pointer select-none pl-8 pb-4"
                     >
@@ -53,3 +87,32 @@
         </table>
     </div>
 </template>
+<script setup>
+import { ref, onMounted } from "vue";
+import axiosInstance from "../axiosInstance";
+
+const files = ref([]);
+const folders = ref([]);
+
+function formatDate(dateStr) {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString("en-CA");
+}
+
+function getFiles() {
+    axiosInstance.get("/api/file/get").then((resp) => {
+        files.value = resp.data;
+    });
+}
+
+function getFolders() {
+    axiosInstance.get("/api/folder/get").then((resp) => {
+        folders.value = resp.data;
+    });
+}
+
+onMounted(async () => {
+    getFiles();
+    getFolders();
+});
+</script>
