@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"net/http"
 	"os"
@@ -390,10 +391,39 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filter = bson.M{
+		"file_id":   fileShareSettings.FileId,
+		"sender_id": requesterId,
+	}
+
+	projection = bson.M{
+		"status": 1,
+	}
+
 	// file owner does not need approval
 	if fileShareSettings.Approvable && file.OwnerId != requesterId {
-		utils.WriteError(w, http.StatusPreconditionRequired, "approval is required")
-		return
+
+		approvalInstance, err := handler.Models.Approval.Get(filter, projection)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			utils.WriteError(w, http.StatusPreconditionRequired, "approval required")
+			return
+		}
+
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		if approvalInstance.Status == "rejected" {
+			utils.WriteError(w, http.StatusBadRequest, "Your approval request has been rejected.")
+			return
+		}
+
+		if approvalInstance.Status == "pending" {
+			utils.WriteError(w, http.StatusBadRequest, "Your approval request is in pending. Please be patient")
+			return
+		}
+
 	}
 
 	utils.WriteJSONData(w, map[string]any{"file_address": file.Address})

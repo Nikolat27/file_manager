@@ -198,21 +198,38 @@
             </div>
         </div>
 
-        <!-- Status-only Modal -->
+        <!-- Approval/Status Modal -->
         <div
             v-if="showStatusModal"
             class="fixed inset-0 flex items-center justify-center bg-gray-200 bg-opacity-50 z-50"
         >
             <div
-                class="bg-white p-6 rounded-xl shadow max-w-sm w-full text-center"
+                class="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full text-center"
             >
                 <h2 class="text-lg font-bold mb-4 text-blue-700">
                     Approval Info
                 </h2>
-                <p class="text-gray-700">{{ approvalMessage }}</p>
+                <p class="text-gray-700 mb-6">{{ approvalMessage }}</p>
+
+                <!-- Show 'Continue' button only if approved -->
                 <button
-                    class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-800"
+                    v-if="approvalStatus === 'approved'"
+                    @click="
+                        () => {
+                            showStatusModal = false;
+                            handleFileAccess(shortUrl);
+                        }
+                    "
+                    class="bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded"
+                    autofocus
+                >
+                    Continue
+                </button>
+                <!-- Show only a Close button otherwise -->
+                <button
+                    v-else
                     @click="showStatusModal = false"
+                    class="bg-gray-400 text-white px-4 py-2 rounded"
                 >
                     Close
                 </button>
@@ -235,6 +252,7 @@ const approvalModal = ref(false);
 const approvalMessage = ref("");
 const approvalReason = ref("");
 const password = ref("");
+const approvalStatus = ref(""); // pending, approved, rejected, not_requested
 
 const shortUrl = route.params.id;
 
@@ -251,6 +269,8 @@ function resetModals() {
     showStatusModal.value = false;
     error.value = "";
     approvalMessage.value = "";
+    approvalReason.value = "";
+    approvalStatus.value = "";
 }
 
 function parseError(err) {
@@ -292,7 +312,16 @@ async function handleFileAccess(fileShortUrl) {
     resetModals();
 
     try {
-        const resp = await axiosInstance.get(`/api/file/get/${fileShortUrl}`);
+        let resp;
+        if (password.value) {
+            // If we have password, try POSTing with it
+            resp = await axiosInstance.post(`/api/file/get/${fileShortUrl}`, {
+                password: password.value,
+            });
+        } else {
+            // Else, try GET (public or approval only)
+            resp = await axiosInstance.get(`/api/file/get/${fileShortUrl}`);
+        }
         showFile(resp.data);
     } catch (err) {
         const data = parseError(err);
@@ -303,12 +332,53 @@ async function handleFileAccess(fileShortUrl) {
         ) {
             passwordModal.value = true;
             error.value = data.error || "Password is required.";
+            // Clear wrong password on error
+            password.value = "";
+        } else if (err.response?.status === 428) {
+            await checkApprovalStatus(fileShortUrl);
         } else {
             error.value = data.error || "Failed to fetch file data.";
             showError(error.value);
         }
     } finally {
         loading.value = false;
+    }
+}
+
+// Step 2: Inquiry about approval status, then act accordingly
+async function checkApprovalStatus(fileShortUrl) {
+    try {
+        const resp = await axiosInstance.get(
+            `/api/approval/check/${fileShortUrl}`
+        );
+        // If approved (owner or approval granted)
+        approvalStatus.value = "approved";
+        approvalMessage.value =
+            resp.data?.message ||
+            "Approval granted. Please continue to access the file.";
+        showStatusModal.value = true; // Show modal with "Continue" button
+    } catch (err) {
+        // Approval not granted yet
+        const data = parseError(err);
+        approvalStatus.value = data.error || "unknown";
+        switch (approvalStatus.value) {
+            case "pending":
+                showStatusModal.value = true;
+                approvalMessage.value =
+                    "Your approval is pending. Please wait for the owner to approve.";
+                break;
+            case "rejected":
+                showStatusModal.value = true;
+                approvalMessage.value =
+                    "Your approval was rejected. You may contact the owner or try again later.";
+                break;
+            case "not_requested":
+                approvalModal.value = true; // Show the approval request form
+                break;
+            default:
+                error.value = "Unknown approval status.";
+                showError(error.value);
+        }
     }
 }
 
@@ -322,15 +392,13 @@ async function submitPassword() {
         passwordModal.value = false;
         showFile(resp.data);
     } catch (err) {
-        // Approval is required
         if (err.response?.status === 428) {
-            approvalModal.value = true;
+            await checkApprovalStatus(shortUrl);
         }
         const data = parseError(err);
         error.value = data.error || "Incorrect password. Try again";
     } finally {
         loading.value = false;
-        password.value = "";
     }
 }
 
@@ -346,6 +414,7 @@ async function sendApprovalRequest() {
         approvalMessage.value =
             "Approval request sent. Please wait for confirmation.";
         showStatusModal.value = true;
+        approvalStatus.value = "pending";
     } catch (err) {
         const data = parseError(err);
         approvalMessage.value =
@@ -361,24 +430,23 @@ async function downloadFile() {
         const res = await axiosInstance.get(`/api/file/download/${shortUrl}`, {
             responseType: "blob",
         });
-
         const url = URL.createObjectURL(res.data);
         const link = document.createElement("a");
-
         link.href = url;
         link.download = fileName.value || `${shortUrl}.bin`;
-
         document.body.appendChild(link);
-
         link.click();
         link.remove();
-
         URL.revokeObjectURL(url);
-
         showSuccess("Download started");
     } catch (err) {
         showError("Download failed");
     }
+}
+
+// Optionally: Allow user to manually check approval status again (e.g., after waiting)
+async function retryApprovalCheck() {
+    await checkApprovalStatus(shortUrl);
 }
 
 onMounted(() => handleFileAccess(shortUrl));

@@ -205,7 +205,7 @@ func (handler *Handler) CheckApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, "Approval`s Status changed successfully")
+	utils.WriteJSON(w, "approved")
 }
 
 func checkApprovalAccess(fileId, ownerId, requesterId primitive.ObjectID, handler *Handler) error {
