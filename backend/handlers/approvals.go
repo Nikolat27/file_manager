@@ -48,7 +48,6 @@ func (handler *Handler) GetApprovalsList(w http.ResponseWriter, r *http.Request)
 		"approvals": approvals,
 	}
 
-	fmt.Println(response["approvals"])
 	utils.WriteJSONData(w, response)
 }
 
@@ -261,6 +260,63 @@ func (handler *Handler) CheckApproval(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.WriteJSON(w, "approved")
+}
+
+func (handler *Handler) DeleteApproval(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	approvalId, err := utils.ParseIdParam(r.Context())
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	approvalObjectId, err := utils.ToObjectID(approvalId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	filter := bson.M{
+		"_id":       approvalObjectId,
+		"sender_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	approvalInstance, err := handler.Models.Approval.Get(filter, projection)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			utils.WriteError(w, http.StatusBadRequest, "this approval either does not exist or you are not it`s owner")
+			return
+		}
+
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	filter = bson.M{
+		"_id": approvalInstance.Id,
+	}
+
+	if err := handler.Models.Approval.DeleteOne(filter); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "approval deleted successfully")
 }
 
 func checkApprovalAccess(fileId, ownerId, requesterId primitive.ObjectID, handler *Handler) error {
