@@ -297,16 +297,12 @@ async function handleFileAccess(fileShortUrl) {
     } catch (err) {
         const data = parseError(err);
 
-        if (err.response?.status === 412) {
-            // Approval is required
-            approvalModal.value = true;
-        } else if (
+        if (
             data.error === "password is required" ||
             data.error === "incorrect password"
         ) {
             passwordModal.value = true;
             error.value = data.error || "Password is required.";
-            showError(error.value);
         } else {
             error.value = data.error || "Failed to fetch file data.";
             showError(error.value);
@@ -326,9 +322,12 @@ async function submitPassword() {
         passwordModal.value = false;
         showFile(resp.data);
     } catch (err) {
+        // Approval is required
+        if (err.response?.status === 428) {
+            approvalModal.value = true;
+        }
         const data = parseError(err);
         error.value = data.error || "Incorrect password. Try again";
-        showError(error.value);
     } finally {
         loading.value = false;
         password.value = "";
@@ -336,16 +335,10 @@ async function submitPassword() {
 }
 
 async function sendApprovalRequest() {
-    if (!approvalReason.value.trim()) {
-        approvalMessage.value = "Please enter a reason.";
-        showError(approvalMessage.value);
-        return;
-    }
-
     loading.value = true;
     try {
         await axiosInstance.post(`/api/approval/create`, {
-            file_id: shortUrl,
+            short_url: shortUrl,
             reason: approvalReason.value.trim(),
         });
         showInfo("Approval request sent. Please wait for confirmation.");
@@ -369,7 +362,6 @@ async function downloadFile() {
             responseType: "blob",
         });
 
-        console.log(res);
         const url = URL.createObjectURL(res.data);
         const link = document.createElement("a");
 

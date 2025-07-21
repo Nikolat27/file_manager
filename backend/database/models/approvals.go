@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"errors"
-	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -41,7 +40,7 @@ func (approval *ApprovalModel) Create(fileId, ownerId, senderId primitive.Object
 
 	id, err := approval.db.Collection("approvals").InsertOne(ctx, newApproval)
 	if err != nil {
-		return primitive.NilObjectID, fmt.Errorf("creating approval instance: %s", err)
+		return primitive.NilObjectID, err
 	}
 
 	return id.InsertedID.(primitive.ObjectID), nil

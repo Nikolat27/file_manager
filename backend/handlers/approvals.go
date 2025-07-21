@@ -19,8 +19,8 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input struct {
-		FileId string `json:"file_id"`
-		Reason string `json:"reason"`
+		ShortUrl string `json:"short_url"`
+		Reason   string `json:"reason"`
 	}
 
 	if err := utils.ParseJSON(r.Body, 10000, &input); err != nil {
@@ -28,20 +28,15 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fileObjectId, err := utils.ToObjectID(input.FileId)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
 	filter := bson.M{
-		"file_id": fileObjectId,
+		"short_url": input.ShortUrl,
 	}
 
 	projection := bson.M{
 		"user_id":    1,
 		"name":       1,
 		"approvable": 1,
+		"file_id":    1,
 	}
 
 	fileSettings, err := handler.Models.FileSettings.Get(filter, projection)
@@ -70,19 +65,19 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		"_id": 1,
 	}
 
-	approval, err := handler.Models.Approval.Get(filter, projection)
-	if err != nil {
+	if _, err := handler.Models.Approval.Get(filter, projection); err == nil {
+		utils.WriteError(w, http.StatusBadRequest, "approval request has already sent")
+		return
+	} else {
+		// If approval exists, Return error
+		if !errors.Is(err, mongo.ErrNoDocuments) {
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+	}
+
+	if _, err := handler.Models.Approval.Create(fileSettings.FileId, fileSettings.UserId, userObjectId, input.Reason); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	if !approval.Id.IsZero() {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("you have already sent an approval request for this file. Please be patient"))
-		return
-	}
-
-	if _, err := handler.Models.Approval.Create(fileObjectId, fileSettings.UserId, userObjectId, input.Reason); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
