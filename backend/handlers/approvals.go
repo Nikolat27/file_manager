@@ -14,9 +14,8 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input struct {
-		FileId  string `json:"file_id"`
-		OwnerId string `json:"owner_id"`
-		Reason  string `json:"reason"`
+		FileId string `json:"file_id"`
+		Reason string `json:"reason"`
 	}
 
 	if err := utils.ParseJSON(r.Body, 10000, &input); err != nil {
@@ -41,7 +40,7 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ownerObjectId, err := utils.ToObjectID(input.OwnerId)
+	ownerObjectId, err := handler.Models.FileSettings.GetUserId(fileObjectId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -50,6 +49,17 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 	userObjectId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	alreadyRequested, err := handler.Models.Approval.HasAlreadyRequested(fileObjectId, userObjectId)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if alreadyRequested {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("you have already sent an approval request for this file. Please be patient"))
 		return
 	}
 
