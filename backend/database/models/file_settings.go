@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"errors"
-	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -57,33 +56,25 @@ func (file *FileSettingModel) Create(fileId, userId primitive.ObjectID, shortUrl
 	return nil
 }
 
-func (file *FileSettingModel) Get(fileId primitive.ObjectID) (*FileSettings, error) {
+// Get -> Returns one
+func (file *FileSettingModel) Get(filter, projection bson.M) (*FileSettings, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	filter := bson.M{
-		"file_id": fileId,
-	}
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
 
 	var fileInstance FileSettings
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, errors.New("file with this Id does not exist")
-		}
-
+	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
 		return nil, err
 	}
 
 	return &fileInstance, nil
 }
 
-func (file *FileSettingModel) GetAll(userId primitive.ObjectID) ([]FileSettings, error) {
+func (file *FileSettingModel) GetAll(filter bson.M) ([]FileSettings, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	filter := bson.M{
-		"user_id": userId,
-	}
 
 	var settings []FileSettings
 	cursor, err := file.db.Collection(FileSettingsCollectionName).Find(ctx, filter)
@@ -113,130 +104,4 @@ func (file *FileSettingModel) Delete(fileId primitive.ObjectID) error {
 	}
 
 	return nil
-}
-
-func (file *FileSettingModel) GetFileIdByUrl(shortUrl string) (primitive.ObjectID, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"short_url": shortUrl,
-	}
-
-	projection := bson.M{
-		"file_id": 1,
-	}
-
-	findOptions := options.FindOne()
-	findOptions.SetProjection(projection)
-
-	var fileInstance FileSettings
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return primitive.NilObjectID, errors.New("file with this short url does not exist")
-		}
-
-		return primitive.NilObjectID, err
-	}
-
-	return fileInstance.FileId, nil
-}
-
-func (file *FileSettingModel) GetUserId(fileId primitive.ObjectID) (primitive.ObjectID, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"file_id": fileId,
-	}
-
-	projection := bson.M{
-		"user_id": 1,
-	}
-
-	findOptions := options.FindOne()
-	findOptions.SetProjection(projection)
-
-	var fileInstance FileSettings
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return primitive.NilObjectID, errors.New("file with this short url does not exist")
-		}
-
-		return primitive.NilObjectID, err
-	}
-
-	return fileInstance.UserId, nil
-}
-
-func (file *FileSettingModel) IsApprovalRequired(fileId primitive.ObjectID) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	fmt.Println(fileId)
-
-	filter := bson.M{
-		"file_id": fileId,
-	}
-
-	projection := bson.M{
-		"approvable": 1,
-	}
-
-	fileOptions := options.FindOne()
-	fileOptions.SetProjection(projection)
-
-	var fileInstance FileSettings
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return false, errors.New("setting with this file id does not exist")
-		}
-
-		return false, err
-	}
-
-	if fileInstance.Approvable {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-func (file *FileSettingModel) IsPasswordRequired(fileId primitive.ObjectID) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"file_id": fileId,
-	}
-
-	var fileInstance FileSettings
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
-		return false, err
-	}
-
-	if fileInstance.HashedPassword == "" {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (file *FileSettingModel) IsExist(fileId primitive.ObjectID) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"file_id": fileId,
-	}
-
-	var fileInstance FileSettings
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return false, nil
-		}
-		return false, err
-	}
-
-	return true, nil
 }

@@ -110,17 +110,10 @@ func (folder *FolderModel) GetAll(ownerId primitive.ObjectID, page, pageSize int
 	return folders, nil
 }
 
-func (folder *FolderModel) GetNameById(id primitive.ObjectID) (string, error) {
+// Get -> Returns One
+func (folder *FolderModel) Get(filter, projection bson.M) (*Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	filter := bson.M{
-		"_id": id,
-	}
-
-	projection := bson.M{
-		"name": 1,
-	}
 
 	findOptions := options.FindOne()
 	findOptions.SetProjection(projection)
@@ -128,31 +121,12 @@ func (folder *FolderModel) GetNameById(id primitive.ObjectID) (string, error) {
 	var folderInstance Folder
 
 	if err := folder.db.Collection("folders").FindOne(ctx, filter, findOptions).Decode(&folderInstance); err != nil {
-		return "", err
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, errors.New("folder with this filter does not exist")
+		}
+
+		return nil, err
 	}
 
-	return folderInstance.Name, nil
-}
-
-func (folder *FolderModel) Validate(folderId, ownerId primitive.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id":      folderId,
-		"owner_id": ownerId,
-	}
-
-	projection := bson.M{
-		"_id": 1,
-	}
-
-	findOptions := options.FindOne()
-	findOptions.SetProjection(projection)
-
-	if err := folder.db.Collection("folders").FindOne(ctx, filter, findOptions).Err(); err != nil {
-		return errors.New("either a folder with this id does not exist or your arent the owner of it")
-	}
-
-	return nil
+	return &folderInstance, nil
 }

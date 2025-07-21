@@ -26,8 +26,6 @@ type Approval struct {
 	ReviewedAt *time.Time         `json:"reviewed_at,omitempty" bson:"reviewed_at,omitempty"`
 }
 
-const ApprovalCollectionName = "approvals"
-
 func (approval *ApprovalModel) Create(fileId, ownerId, senderId primitive.ObjectID, reason string) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -41,7 +39,7 @@ func (approval *ApprovalModel) Create(fileId, ownerId, senderId primitive.Object
 		CreatedAt: time.Now(),
 	}
 
-	id, err := approval.db.Collection(ApprovalCollectionName).InsertOne(ctx, newApproval)
+	id, err := approval.db.Collection("approvals").InsertOne(ctx, newApproval)
 	if err != nil {
 		return primitive.NilObjectID, fmt.Errorf("creating approval instance: %s", err)
 	}
@@ -49,39 +47,31 @@ func (approval *ApprovalModel) Create(fileId, ownerId, senderId primitive.Object
 	return id.InsertedID.(primitive.ObjectID), nil
 }
 
-func (approval *ApprovalModel) HasAlreadyRequested(fileId, senderId primitive.ObjectID) (bool, error) {
+// Get -> Returns One
+func (approval *ApprovalModel) Get(filter, projection bson.M) (*Approval, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	filter := bson.M{
-		"file_id":   fileId,
-		"sender_id": senderId,
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
+
+	var approvalInstance Approval
+	if err := approval.db.Collection("approvals").FindOne(ctx, filter, findOptions).Decode(&approvalInstance); err != nil {
+		return nil, err
 	}
 
-	count, err := approval.db.Collection(ApprovalCollectionName).CountDocuments(ctx, filter)
-	if err != nil {
-		return false, err
-	}
-
-	return count > 0, nil
+	return &approvalInstance, nil
 }
 
-func (approval *ApprovalModel) UpdateStatus(id primitive.ObjectID, status string) error {
+func (approval *ApprovalModel) Update(id primitive.ObjectID, updates bson.M) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if status != "approved" && status != "rejected" && status != "pending" {
-		return errors.New("invalid status parameters. Must be: approved, rejected, pending")
-	}
-
 	update := bson.M{
-		"$set": bson.M{
-			"status":      status,
-			"reviewed_at": time.Now(),
-		},
+		"$set": updates,
 	}
 
-	result, err := approval.db.Collection(ApprovalCollectionName).UpdateByID(ctx, id, update)
+	result, err := approval.db.Collection("apprvals").UpdateByID(ctx, id, update)
 	if err != nil {
 		return err
 	}
@@ -92,61 +82,6 @@ func (approval *ApprovalModel) UpdateStatus(id primitive.ObjectID, status string
 
 	if result.ModifiedCount == 0 {
 		return errors.New("did not detect any changes")
-	}
-
-	return nil
-}
-
-func (approval *ApprovalModel) CheckStatus(fileId, senderId primitive.ObjectID) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"file_id":   fileId,
-		"sender_id": senderId,
-	}
-
-	projection := bson.M{
-		"status": 1,
-	}
-
-	approvalOptions := options.FindOne()
-	approvalOptions.SetProjection(projection)
-
-	var approvalInstance Approval
-	if err := approval.db.Collection(ApprovalCollectionName).FindOne(ctx, filter, approvalOptions).Decode(&approvalInstance); err != nil {
-		return "", err
-	}
-
-	return approvalInstance.Status, nil
-}
-
-func (approval *ApprovalModel) ValidateOwner(id, userId primitive.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id": id,
-	}
-
-	projection := bson.M{
-		"owner_id": 1,
-	}
-
-	approvalOptions := options.FindOne()
-	approvalOptions.SetProjection(projection)
-
-	var approvalInstance Approval
-	if err := approval.db.Collection(ApprovalCollectionName).FindOne(ctx, filter, approvalOptions).Decode(&approvalInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return errors.New("approval not found")
-		}
-
-		return err
-	}
-
-	if approvalInstance.OwnerId != userId {
-		return errors.New("this user is not the approval`s owner")
 	}
 
 	return nil

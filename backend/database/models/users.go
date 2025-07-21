@@ -54,37 +54,15 @@ func (user *UserModel) Create(username, plan, salt, hashedPassword string) (prim
 	return id, nil
 }
 
-func (user *UserModel) GetById(id primitive.ObjectID) (*User, error) {
+func (user *UserModel) Get(filter, projection bson.M) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	filter := bson.M{
-		"_id": id,
-	}
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
 
 	var userInstance User
-	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter).
-		Decode(&userInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, errors.New("user with this id does not exist")
-		}
-
-		return nil, err
-	}
-
-	return &userInstance, nil
-}
-
-func (user *UserModel) GetByUsername(username string) (*User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"username": username,
-	}
-
-	var userInstance User
-	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter).Decode(&userInstance); err != nil {
+	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter, findOptions).Decode(&userInstance); err != nil {
 		return nil, err
 	}
 
@@ -114,59 +92,6 @@ func (user *UserModel) Update(id primitive.ObjectID, updates bson.M) error {
 
 	if result.ModifiedCount == 0 {
 		return errors.New("did not detect any change")
-	}
-
-	return nil
-}
-
-func (user *UserModel) GetUsedStorage(id primitive.ObjectID) (int64, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id": id,
-	}
-
-	projection := bson.M{
-		"total_upload_size": 1,
-	}
-
-	findOptions := options.FindOne()
-	findOptions.SetProjection(projection)
-
-	var userInstance User
-	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter, findOptions).Decode(&userInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return 0, errors.New("user with this id doesnt exist")
-		}
-
-		return 0, err
-	}
-
-	return userInstance.TotalUploadSize, nil
-}
-
-func (user *UserModel) CheckExist(id primitive.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id": id,
-	}
-
-	projection := bson.M{
-		"_id": 1,
-	}
-
-	findOptions := options.FindOne()
-	findOptions.SetProjection(projection)
-
-	if err := user.db.Collection(userCollectionName).FindOne(ctx, filter, findOptions).Err(); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return errors.New("user with this id does not exist")
-		}
-
-		return err
 	}
 
 	return nil

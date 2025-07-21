@@ -58,16 +58,16 @@ func (team *TeamModel) Create(id, ownerId primitive.ObjectID, name, description,
 	return newId.InsertedID.(primitive.ObjectID), nil
 }
 
-func (team *TeamModel) Get(id primitive.ObjectID) (*Team, error) {
+// Get -> Returns One
+func (team *TeamModel) Get(filter, projection bson.M) (*Team, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	filter := bson.M{
-		"_id": id,
-	}
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
 
 	var teamInstance Team
-	if err := team.db.Collection("teams").FindOne(ctx, filter).Decode(&teamInstance); err != nil {
+	if err := team.db.Collection("teams").FindOne(ctx, filter, findOptions).Decode(&teamInstance); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, errors.New("team with this id does not exist")
 		}
@@ -128,58 +128,4 @@ func (team *TeamModel) Delete(id primitive.ObjectID) error {
 	}
 
 	return nil
-}
-
-func (team *TeamModel) ValidateAdmin(id, userId primitive.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id":    id,
-		"admins": userId,
-	}
-
-	projection := bson.M{
-		"_id": 1,
-	}
-
-	findOptions := options.FindOne()
-	findOptions.SetProjection(projection)
-
-	if err := team.db.Collection("teams").FindOne(ctx, filter, findOptions).Err(); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return errors.New("either user is not an admin or team with this id does not exist")
-		}
-
-		return err
-	}
-
-	return nil
-}
-
-func (team *TeamModel) GetUsedStorage(id primitive.ObjectID) (int64, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id": id,
-	}
-
-	projection := bson.M{
-		"storage_used": 1,
-	}
-
-	findOptions := options.FindOne()
-	findOptions.SetProjection(projection)
-
-	var teamInstance Team
-	if err := team.db.Collection("teams").FindOne(ctx, filter, findOptions).Decode(&teamInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return 0, errors.New("team with this id does not exist")
-		}
-
-		return 0, err
-	}
-
-	return teamInstance.StorageUsed, nil
 }

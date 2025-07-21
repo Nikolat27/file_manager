@@ -50,14 +50,9 @@ func (file *FileModel) Create(ownerId, teamId, folderId primitive.ObjectID, file
 }
 
 // GetAll -> Returns List
-func (file *FileModel) GetAll(ownerId primitive.ObjectID, page, pageSize int64) ([]File, error) {
+func (file *FileModel) GetAll(filter bson.M, page, pageSize int64) ([]File, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	filter := bson.M{
-		"owner_id":  ownerId,
-		"folder_id": primitive.NilObjectID,
-	}
 
 	projection := bson.M{
 		"hashed_password": 0,
@@ -80,27 +75,6 @@ func (file *FileModel) GetAll(ownerId primitive.ObjectID, page, pageSize int64) 
 	}
 
 	return files, nil
-}
-
-// GetOne -> Returns One
-func (file *FileModel) GetOne(id primitive.ObjectID) (*File, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id": id,
-	}
-
-	var fileInstance File
-	if err := file.db.Collection("files").FindOne(ctx, filter).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, errors.New("file with this id does not exist")
-		}
-
-		return nil, err
-	}
-
-	return &fileInstance, nil
 }
 
 func (file *FileModel) Delete(id primitive.ObjectID) error {
@@ -123,21 +97,15 @@ func (file *FileModel) Delete(id primitive.ObjectID) error {
 	return nil
 }
 
-func (file *FileModel) Rename(id primitive.ObjectID, newName []byte) error {
+func (file *FileModel) Update(id primitive.ObjectID, updates bson.M) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	filter := bson.M{
-		"_id": id,
-	}
-
 	update := bson.M{
-		"$set": bson.M{
-			"name": string(newName),
-		},
+		"$set": updates,
 	}
 
-	updateResult, err := file.db.Collection("files").UpdateOne(ctx, filter, update)
+	updateResult, err := file.db.Collection("files").UpdateByID(ctx, id, update)
 	if err != nil {
 		return err
 	}
@@ -153,188 +121,22 @@ func (file *FileModel) Rename(id primitive.ObjectID, newName []byte) error {
 	return nil
 }
 
-func (file *FileModel) Search(ownerId primitive.ObjectID, name string, page, pageSize int64) ([]File, error) {
+// Get -> Returns One
+func (file *FileModel) Get(filter, projection bson.M) (*File, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	filter := bson.M{
-		"owner_id": ownerId,
-		"name": bson.M{
-			"$regex": name, "$options": "i", // case insensitive
-		},
-	}
-
-	projection := bson.M{
-		"hashed_password": 0,
-		"salt":            0,
-	}
-
-	findOptions := options.Find()
+	findOptions := options.FindOne()
 	findOptions.SetProjection(projection)
-	findOptions.SetSkip((page - 1) * pageSize)
-	findOptions.SetLimit(pageSize)
-
-	cursor, err := file.db.Collection("files").Find(ctx, filter, findOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	var files []File
-	if err := cursor.All(ctx, &files); err != nil {
-		return nil, err
-	}
-
-	return files, nil
-}
-
-func (file *FileModel) IsExpired(id primitive.ObjectID) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id": id,
-	}
-
-	projection := bson.M{
-		"expire_at": 1,
-	}
-
-	fileOptions := options.FindOne()
-	fileOptions.SetProjection(projection)
 
 	var fileInstance File
-	if err := file.db.Collection("files").FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
-		return false, err
-	}
-
-	if fileInstance.ExpireAt.IsZero() {
-		return false, nil
-	}
-
-	if time.Now().After(fileInstance.ExpireAt) {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-func (file *FileModel) GetDiskAddressById(id primitive.ObjectID) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id": id,
-	}
-
-	projection := bson.M{
-		"address": 1,
-	}
-
-	fileOptions := options.FindOne()
-	fileOptions.SetProjection(projection)
-
-	var fileInstance File
-	if err := file.db.Collection("files").FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
+	if err := file.db.Collection("files").FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, errors.New("file with this Id does not exist")
+			return nil, errors.New("file does not exist")
 		}
 
 		return nil, err
 	}
 
-	return []byte(fileInstance.Address), nil
-}
-
-func (file *FileModel) IsExist(id primitive.ObjectID) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"_id": id,
-	}
-
-	projection := bson.M{
-		"_id": 1,
-	}
-
-	fileOptions := options.FindOne()
-	fileOptions.SetProjection(projection)
-
-	var fileInstance File
-	if err := file.db.Collection("files").FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	return true, nil
-}
-
-func (file *FileModel) GetByFolderId(folderId primitive.ObjectID, page, pageSize int64) ([]File, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"folder_id": folderId,
-	}
-
-	projection := bson.M{
-		"hashed_password": 0,
-		"salt":            0,
-	}
-
-	findOptions := options.Find()
-	findOptions.SetProjection(projection)
-	findOptions.SetSkip((page - 1) * pageSize)
-	findOptions.SetLimit(pageSize)
-
-	cursor, err := file.db.Collection("files").Find(ctx, filter, findOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	var files []File
-	if err := cursor.All(ctx, &files); err != nil {
-		return nil, err
-	}
-
-	return files, nil
-}
-
-func (file *FileModel) GetUserFileAddresses(userId primitive.ObjectID) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"owner_id": userId,
-	}
-	projection := bson.M{
-		"address": 1,
-		"_id":     0,
-	}
-
-	findOptions := options.Find()
-	findOptions.SetProjection(projection)
-
-	cursor, err := file.db.Collection("files").Find(ctx, filter, findOptions)
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-
-	var addresses []string
-	for cursor.Next(ctx) {
-		var result struct {
-			Address string `bson:"address"`
-		}
-
-		if err := cursor.Decode(&result); err != nil {
-			return nil, err
-		}
-		addresses = append(addresses, result.Address)
-	}
-
-	return addresses, cursor.Err()
+	return &fileInstance, nil
 }
