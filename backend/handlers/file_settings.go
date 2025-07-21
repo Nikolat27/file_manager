@@ -222,5 +222,5 @@ func getExpireAt(r *http.Request, plan string) (time.Time, error) {
 		return time.Now().Add(7 * time.Hour * 24), nil
 	}
 
-	return time.Parse(expireAtStr, time.DateTime)
+	return time.Parse(time.RFC3339, expireAtStr)
 }
