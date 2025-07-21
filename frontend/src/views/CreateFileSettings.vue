@@ -47,12 +47,12 @@
                         type="checkbox"
                         id="approvable"
                         class="accent-blue-600"
-                        :disabled="isFree"
+                        :disabled="isPlanFree"
                     />
                     <label
                         for="approvable"
                         class="text-blue-800 font-medium"
-                        :class="isFree ? 'opacity-60 cursor-not-allowed' : ''"
+                        :class="isPlanFree ? 'opacity-60 cursor-not-allowed' : ''"
                     >
                         Approver required
                     </label>
@@ -65,9 +65,9 @@
                         type="checkbox"
                         id="viewOnly"
                         class="accent-blue-600"
-                        :disabled="isFree"
+                        :disabled="isPlanFree"
                         :class="
-                            isFree
+                            isPlanFree
                                 ? 'opacity-60 backdrop-blur cursor-not-allowed'
                                 : ''
                         "
@@ -75,7 +75,7 @@
                     <label
                         for="viewOnly"
                         class="text-blue-800 font-medium"
-                        :class="isFree ? 'opacity-60 cursor-not-allowed' : ''"
+                        :class="isPlanFree ? 'opacity-60 cursor-not-allowed' : ''"
                     >
                         View Only
                     </label>
@@ -85,22 +85,22 @@
                 <div>
                     <label
                         class="block text-blue-800 font-medium mb-1"
-                        :class="isFree ? 'opacity-60  cursor-not-allowed' : ''"
+                        :class="isPlanFree ? 'opacity-60  cursor-not-allowed' : ''"
                     >
                         Expiration Date
                     </label>
                     <input
                         v-model="expirationDate"
                         type="date"
-                        :disabled="isFree"
+                        :disabled="isPlanFree"
                         class="w-full px-4 py-3 rounded-xl border border-blue-300 focus:outline-none focus:border-blue-500 bg-blue-50 disabled:bg-gray-100"
                         :class="
-                            isFree
+                            isPlanFree
                                 ? 'opacity-60 backdrop-blur cursor-not-allowed'
                                 : ''
                         "
                     />
-                    <p v-if="isFree" class="text-sm text-blue-600 mt-2">
+                    <p v-if="isPlanFree" class="text-sm text-blue-600 mt-2">
                         Default expiration is
                         <span class="font-semibold"
                             >7 days for free plan users</span
@@ -112,7 +112,7 @@
                 <div>
                     <label
                         class="block text-blue-800 font-medium mb-1"
-                        :class="isFree ? 'opacity-60 cursor-not-allowed' : ''"
+                        :class="isPlanFree ? 'opacity-60 cursor-not-allowed' : ''"
                     >
                         Max Downloads
                     </label>
@@ -120,11 +120,11 @@
                         v-model.number="maxDownloads"
                         type="number"
                         min="1"
-                        :disabled="isFree"
+                        :disabled="isPlanFree"
                         placeholder="Unlimited"
                         class="w-full px-4 py-3 rounded-xl border border-blue-300 focus:outline-none focus:border-blue-500 bg-blue-50 disabled:bg-gray-100"
                         :class="
-                            isFree
+                            isPlanFree
                                 ? 'opacity-60 backdrop-blur cursor-not-allowed'
                                 : ''
                         "
@@ -168,20 +168,25 @@ const viewOnly = ref(false);
 const expirationDate = ref("");
 const maxDownloads = ref(null);
 
-const isFree = computed(() => plan === "free");
+const isPlanFree = computed(() => plan === "free");
 
 function onSave() {
     const formData = new FormData();
     formData.append("password", password.value);
-    formData.append("approvable", !isFree.value ? approvable.value : false);
-    formData.append("view_only", !isFree.value ? viewOnly.value : false);
+    formData.append("approvable", !isPlanFree.value ? approvable.value : false);
+    formData.append("view_only", !isPlanFree.value ? viewOnly.value : false);
     formData.append(
         "expiration_at",
-        !isFree.value && expirationDate.value
+        !isPlanFree.value && expirationDate.value
             ? new Date(expirationDate.value).toISOString()
             : ""
     );
-    formData.append("max_downloads", !isFree.value ? maxDownloads.value : "");
+
+    if (!maxDownloads.value || !isPlanFree.value) {
+        formData.append("max_downloads", -1); // default (unlimited)
+    } else {
+        formData.append("max_downloads", maxDownloads.value);
+    }
 
     // Add folder_id
     if (folderId) {
