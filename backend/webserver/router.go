@@ -76,6 +76,7 @@ func (router *AppRouter) registerFileRoutes(handler *handlers.Handler) {
 func (router *AppRouter) registerFileSettingsRoutes(handler *handlers.Handler) {
 	router.CoreRouter.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)
 	router.CoreRouter.HandlerFunc("GET", "/api/file/settings/get", handler.GetFilesSettings)
+	router.CoreRouter.HandlerFunc("DELETE", "/api/file/settings/delete/:id", handler.DeleteFileSettings)
 }
 
 // registerFileRoutes -> Folder

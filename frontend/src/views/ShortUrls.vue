@@ -54,12 +54,6 @@
                         >
                             Delete
                         </button>
-                        <button
-                            class="bg-blue-500 hover:bg-blue-700 text-white px-3 py-1 rounded"
-                            @click="editUrl(url)"
-                        >
-                            Modify
-                        </button>
                     </td>
                 </tr>
             </tbody>
@@ -71,6 +65,7 @@ import { ref, onMounted } from "vue";
 import { useUserStore } from "../stores/user";
 import axiosInstance from "../axiosInstance";
 import { useRouter } from "vue-router";
+import { showSuccess, showError } from "../utils/toast";
 
 const router = useRouter();
 
@@ -93,9 +88,15 @@ function formatDate(dateStr) {
 }
 
 function deleteUrl(id) {
-    // Call API to delete and then update sharedUrls
-    // await deleteSharedUrl(id);
-    sharedUrls.value = sharedUrls.value.filter((url) => url.id !== id);
+    axiosInstance
+        .delete(`/api/file/settings/delete/${id}`)
+        .then(() => {
+            showSuccess("Url deleted successfully");
+            sharedUrls.value = sharedUrls.value.filter((url) => url.id !== id);
+        })
+        .catch((err) => {
+            showError(err);
+        });
 }
 
 function redirectToGetFile(shortUrl) {

@@ -151,6 +151,57 @@ func (handler *Handler) GetFilesSettings(w http.ResponseWriter, r *http.Request)
 	utils.WriteJSONData(w, response)
 }
 
+func (handler *Handler) DeleteFileSettings(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	settingId, err := utils.ParseIdParam(r.Context())
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	settingObjectId, err := utils.ToObjectID(settingId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	filter := bson.M{
+		"_id":     settingObjectId,
+		"user_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	if _, err := handler.Models.FileSettings.Get(filter, projection); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	filter = bson.M{
+		"_id": settingObjectId,
+	}
+
+	if err := handler.Models.FileSettings.Delete(filter); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "setting deleted successfully")
+}
+
 func getPasswordAndSalt(r *http.Request) (string, string, error) {
 	rawPassword := r.FormValue("password")
 	if rawPassword == "" {
