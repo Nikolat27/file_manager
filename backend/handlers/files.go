@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"net/http"
 	"os"
@@ -168,10 +169,18 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 
 	// If fileShareSetting`s accessing requires an approval, verify user`s approval status
 	if fileShareSetting.Approvable {
-		if err := checkUserApprovalStatus(r, handler, file.Id, file.OwnerId); err != nil {
-			utils.WriteError(w, http.StatusBadRequest, err)
+
+		err := checkUserApprovalStatus(r, handler, file.Id, file.OwnerId)
+		var approvalErr *utils.ApprovalError
+
+		if errors.As(err, &approvalErr) {
+			utils.WriteErrorData(w, http.StatusPreconditionRequired, map[string]any{
+				"type":    approvalErr.Type,
+				"message": approvalErr.Message,
+			})
 			return
 		}
+
 	}
 
 	response := map[string]any{
@@ -331,7 +340,7 @@ func getUserUploadDir(userId string) string {
 func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId primitive.ObjectID) error {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
-		return errors.New("this file needs approval, you must be logged in to send your approval")
+		return &utils.ApprovalError{Type: "unauthenticated", Message: "you must be logged in to send an approval"}
 	}
 
 	userObjectId, err := utils.ToObjectID(payload.UserId)
@@ -339,25 +348,29 @@ func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId 
 		return err
 	}
 
-	// The owner does not need approval
 	if userObjectId == ownerId {
 		return nil
 	}
 
 	status, err := handler.Models.Approval.CheckStatus(fileId, userObjectId)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return &utils.ApprovalError{Type: "not_requested", Message: "approval is required but not requested yet"}
+		}
+
 		return err
 	}
 
-	if status == "rejected" {
-		return errors.New("your approval has been rejected by the file owner")
+	switch status {
+	case "approved":
+		return nil
+	case "rejected":
+		return &utils.ApprovalError{Type: "rejected", Message: "your approval has been rejected"}
+	case "pending":
+		return &utils.ApprovalError{Type: "pending", Message: "your approval is still pending"}
+	default:
+		return &utils.ApprovalError{Type: "error", Message: "your approval status is invalid"}
 	}
-
-	if status == "pending" {
-		return errors.New("your approval is in pending status. Please be patient")
-	}
-
-	return nil
 }
 
 func (handler *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
