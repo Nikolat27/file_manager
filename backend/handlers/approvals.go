@@ -11,6 +11,47 @@ import (
 	"time"
 )
 
+func (handler *Handler) GetApprovalsList(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	filter := bson.M{
+		"sender_id": userObjectId,
+	}
+
+	approvals, err := handler.Models.Approval.GetAll(filter, bson.M{}, 1, 10)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+
+			response := map[string]any{
+				"approvals": nil,
+			}
+
+			utils.WriteJSONData(w, response)
+			return
+		}
+
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	response := map[string]any{
+		"approvals": approvals,
+	}
+
+	fmt.Println(response["approvals"])
+	utils.WriteJSONData(w, response)
+}
+
 func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
@@ -76,7 +117,21 @@ func (handler *Handler) CreateApproval(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if _, err := handler.Models.Approval.Create(fileSettings.FileId, fileSettings.UserId, userObjectId, input.Reason); err != nil {
+	filter = bson.M{
+		"_id": fileSettings.FileId,
+	}
+
+	projection = bson.M{
+		"name": 1,
+	}
+
+	file, err := handler.Models.File.Get(filter, projection)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if _, err := handler.Models.Approval.Create(fileSettings.FileId, fileSettings.UserId, userObjectId, file.Name, input.Reason); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}

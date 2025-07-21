@@ -56,9 +56,16 @@
                 <span class="text-[14px] font-medium">Shared Urls</span>
             </div>
             <div
+                @click="goToSendApprovals"
                 class="w-[196px] h-[36px] rounded-xl bg-[#f7f5f2] hover:cursor-pointer hover:bg-[#ebe9e6] flex justify-start items-center pl-4"
             >
-                <span class="text-[14px] font-medium">File requests</span>
+                <span class="text-[14px] font-medium">Sent Approvals</span>
+            </div>
+            <div
+                @click="goToReceivedApprovals"
+                class="w-[196px] h-[36px] rounded-xl bg-[#f7f5f2] hover:cursor-pointer hover:bg-[#ebe9e6] flex justify-start items-center pl-4"
+            >
+                <span class="text-[14px] font-medium">Received Approvals</span>
             </div>
         </div>
     </aside>
@@ -82,5 +89,13 @@ function goToAllFiles() {
 
 function goToSharedUrls() {
     router.push({ name: "sharedUrls" });
+}
+
+function goToSendApprovals() {
+    router.push({ name: "SentApprovals" });
+}
+
+function goToReceivedApprovals() {
+    router.push({ name: "ReceivedApprovals" });
 }
 </script>

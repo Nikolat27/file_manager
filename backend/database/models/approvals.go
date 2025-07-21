@@ -17,6 +17,7 @@ type ApprovalModel struct {
 type Approval struct {
 	Id         primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 	FileId     primitive.ObjectID `json:"file_id" bson:"file_id"`
+	FileName   string             `json:"file_name" bson:"file_name"`
 	OwnerId    primitive.ObjectID `json:"owner_id" bson:"owner_id"`
 	SenderId   primitive.ObjectID `json:"sender_id" bson:"sender_id"` // the Requester id (user-id)
 	Status     string             `json:"status" bson:"status"`       // pending, approved, rejected
@@ -25,7 +26,7 @@ type Approval struct {
 	ReviewedAt *time.Time         `json:"reviewed_at,omitempty" bson:"reviewed_at,omitempty"`
 }
 
-func (approval *ApprovalModel) Create(fileId, ownerId, senderId primitive.ObjectID, reason string) (primitive.ObjectID, error) {
+func (approval *ApprovalModel) Create(fileId, ownerId, senderId primitive.ObjectID, fileName, reason string) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -34,6 +35,7 @@ func (approval *ApprovalModel) Create(fileId, ownerId, senderId primitive.Object
 		OwnerId:   ownerId,
 		SenderId:  senderId,
 		Status:    "pending", // default
+		FileName:  fileName,
 		Reason:    reason,
 		CreatedAt: time.Now(),
 	}
@@ -44,6 +46,29 @@ func (approval *ApprovalModel) Create(fileId, ownerId, senderId primitive.Object
 	}
 
 	return id.InsertedID.(primitive.ObjectID), nil
+}
+
+// GetAll -> Returns All
+func (approval *ApprovalModel) GetAll(filter, projection bson.M, page, pageLimit int64) ([]Approval, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	findOptions := options.Find()
+	findOptions.SetProjection(projection)
+	findOptions.SetSkip((page - 1) * pageLimit)
+	findOptions.SetLimit(pageLimit)
+
+	var approvals []Approval
+	cursor, err := approval.db.Collection("approvals").Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cursor.All(ctx, &approvals); err != nil {
+		return nil, err
+	}
+
+	return approvals, nil
 }
 
 // Get -> Returns One

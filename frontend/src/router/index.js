@@ -7,6 +7,8 @@ import CreateFileSettingsView from "../views/CreateFileSettings.vue";
 import FolderContents from "../views/FolderContents.vue";
 import ShortUrlsView from "../views/ShortUrls.vue";
 import GetFileView from "../views/GetFile.vue";
+import SentApprovals from "../views/SentApprovals.vue";
+import ReceivedApprovals from "../views/ReceivedApprovals.vue";
 
 const routes = [
     { path: "/", redirect: "/home" },
@@ -42,6 +44,16 @@ const routes = [
         path: "/file/get/:id",
         name: "GetFile",
         component: GetFileView,
+    },
+    {
+        path: "/approvals/sent",
+        name: "SentApprovals",
+        component: SentApprovals,
+    },
+    {
+        path: "/approvals/received",
+        name: "ReceivedApprovals",
+        component: ReceivedApprovals,
     },
 ];
 
