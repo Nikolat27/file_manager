@@ -444,10 +444,5 @@ async function downloadFile() {
     }
 }
 
-// Optionally: Allow user to manually check approval status again (e.g., after waiting)
-async function retryApprovalCheck() {
-    await checkApprovalStatus(shortUrl);
-}
-
 onMounted(() => handleFileAccess(shortUrl));
 </script>

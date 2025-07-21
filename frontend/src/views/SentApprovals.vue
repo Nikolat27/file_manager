@@ -5,7 +5,7 @@
             <thead>
                 <tr class="bg-blue-50">
                     <th class="py-2 px-2 text-left">#</th>
-                    <th class="py-2 px-2 text-left">To File</th>
+                    <th class="py-2 px-2 text-left">File Name</th>
                     <th class="py-2 px-2 text-left">Status</th>
                     <th class="py-2 px-2 text-left">Reason</th>
                     <th class="py-2 px-2 text-left">Created At</th>
@@ -40,7 +40,7 @@
                     </td>
                     <td class="py-2 px-2 text-center">
                         <button
-                            @click="deleteApproval(approval._id)"
+                            @click="deleteApproval(approval.id)"
                             class="cursor-pointer text-red-500 hover:bg-red-100 rounded px-3 py-1"
                         >
                             🗑️
@@ -60,6 +60,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import axiosInstance from "../axiosInstance";
+import { showError, showSuccess } from "../utils/toast";
 const approvals = ref([]);
 
 function statusClass(status) {
@@ -68,11 +69,22 @@ function statusClass(status) {
     if (status === "rejected") return "text-red-500 font-bold";
     return "";
 }
+
 function formatDate(str) {
     return str ? new Date(str).toLocaleString() : "-";
 }
+
 function deleteApproval(id) {
-    approvals.value = approvals.value.filter((a) => a._id !== id);
+    axiosInstance
+        .delete(`/api/approval/delete/${id}`)
+        .then((resp) => {
+            console.log(resp.data);
+            showSuccess("approve request deleted successfully");
+            approvals.value = approvals.value.filter((a) => a.id !== id);
+        })
+        .catch((err) => {
+            showError(err.response.data.error);
+        });
 }
 
 function fetchSentApprovals() {
@@ -93,32 +105,5 @@ function fetchSentApprovals() {
 
 onMounted(() => {
     fetchSentApprovals();
-
-    approvals.value = [
-        {
-            _id: "1001",
-            file_name: "Team_Plan_2025.pdf",
-            status: "pending",
-            reason: "Need to review latest updates for my task.",
-            created_at: "2025-07-18T14:15:00Z",
-            reviewed_at: null,
-        },
-        {
-            _id: "1002",
-            file_name: "Project_Schema.png",
-            status: "approved",
-            reason: "",
-            created_at: "2025-07-16T10:40:00Z",
-            reviewed_at: "2025-07-16T13:22:00Z",
-        },
-        {
-            _id: "1003",
-            file_name: "Financial_Report.xlsx",
-            status: "rejected",
-            reason: "Required for annual review.",
-            created_at: "2025-07-13T09:00:00Z",
-            reviewed_at: "2025-07-13T12:30:00Z",
-        },
-    ];
 });
 </script>

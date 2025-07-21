@@ -20,9 +20,7 @@
                 <tr v-for="url in sharedUrls" :key="url.id">
                     <td class="px-8 py-2">
                         <a
-                            @click="
-                                redirectToGetFile(url.short_url, url.file_id)
-                            "
+                            @click="redirectToGetFile(url.short_url)"
                             target="_blank"
                             class="text-blue-600 underline font-semibold cursor-pointer"
                             >click</a
@@ -100,10 +98,9 @@ function deleteUrl(id) {
     sharedUrls.value = sharedUrls.value.filter((url) => url.id !== id);
 }
 
-function redirectToGetFile(shortUrl, fileId) {
+function redirectToGetFile(shortUrl) {
     router.push({
         path: `/file/get/${shortUrl}`,
-        query: { file_id: fileId },
     });
 }
 
