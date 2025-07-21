@@ -95,8 +95,8 @@ func makeDir(uploadDir string) error {
 	return os.MkdirAll(uploadDir, 0755)
 }
 
-func DeleteFileFromDisk(address []byte) error {
-	return os.Remove(string(address))
+func DeleteFileFromDisk(address string) error {
+	return os.Remove(address)
 }
 
 func CheckFilePassword(hashedPassword, salt, rawPassword []byte) error {

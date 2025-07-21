@@ -33,11 +33,21 @@ func WriteJSONData(w http.ResponseWriter, data interface{}) {
 }
 
 func WriteError(w http.ResponseWriter, status int, err any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	var message string
 	switch val := err.(type) {
 	case string:
-		http.Error(w, val, status)
+		message = val
 	case error:
-		http.Error(w, val.Error(), status)
+		message = val.Error()
+	default:
+		message = "unknown error"
+	}
+
+	if err := json.NewEncoder(w).Encode(map[string]any{"error": message}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -45,8 +55,7 @@ func WriteErrorData(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
-	enc := json.NewEncoder(w)
-	if err := enc.Encode(data); err != nil {
+	if err := json.NewEncoder(w).Encode(data); err != nil {
 		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
 	}
 }
