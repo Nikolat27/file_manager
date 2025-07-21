@@ -18,7 +18,7 @@ type Approval struct {
 	Id         primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 	FileId     primitive.ObjectID `json:"file_id" bson:"file_id"`
 	FileName   string             `json:"file_name" bson:"file_name"`
-	OwnerId    primitive.ObjectID `json:"owner_id" bson:"owner_id"`
+	OwnerId    primitive.ObjectID `json:"owner_id" bson:"owner_id"`   // the file owner id
 	SenderId   primitive.ObjectID `json:"sender_id" bson:"sender_id"` // the Requester id (user-id)
 	Status     string             `json:"status" bson:"status"`       // pending, approved, rejected
 	Reason     string             `json:"reason" bson:"reason"`
@@ -95,7 +95,7 @@ func (approval *ApprovalModel) Update(id primitive.ObjectID, updates bson.M) err
 		"$set": updates,
 	}
 
-	result, err := approval.db.Collection("apprvals").UpdateByID(ctx, id, update)
+	result, err := approval.db.Collection("approvals").UpdateByID(ctx, id, update)
 	if err != nil {
 		return err
 	}
@@ -106,6 +106,22 @@ func (approval *ApprovalModel) Update(id primitive.ObjectID, updates bson.M) err
 
 	if result.ModifiedCount == 0 {
 		return errors.New("did not detect any changes")
+	}
+
+	return nil
+}
+
+func (approval *ApprovalModel) DeleteOne(filter bson.M) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	result, err := approval.db.Collection("approvals").DeleteOne(ctx, filter)
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return errors.New("nothing deleted")
 	}
 
 	return nil
