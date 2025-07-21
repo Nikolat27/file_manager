@@ -277,33 +277,41 @@ func (handler *Handler) storeUserFile(r *http.Request, maxUploadSize int64, user
 }
 
 func (handler *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
-	fileIdStr, err := utils.ParseIdParam(r.Context())
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	fileObjectId, err := utils.ToObjectID(fileIdStr)
+	shortUrlStr, err := utils.ParseIdParam(r.Context())
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	filter := bson.M{
-		"_id": fileObjectId,
+		"short_url": shortUrlStr,
 	}
 
 	projection := bson.M{
-		"address": 1,
+		"file_id": 1,
 	}
 
-	fileInstance, err := handler.Models.File.Get(filter, projection)
+	fileInstance, err := handler.Models.FileSettings.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	file, err := os.Open(fileInstance.Address)
+	filter = bson.M{
+		"_id": fileInstance.FileId,
+	}
+
+	projection = bson.M{
+		"address": 1,
+	}
+
+	fileAddress, err := handler.Models.File.Get(filter, projection)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	file, err := os.Open(fileAddress.Address)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
