@@ -390,7 +390,8 @@ func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if fileShareSettings.Approvable {
+	// file owner does not need approval
+	if fileShareSettings.Approvable && file.OwnerId != requesterId {
 		utils.WriteError(w, http.StatusPreconditionRequired, "approval is required")
 		return
 	}

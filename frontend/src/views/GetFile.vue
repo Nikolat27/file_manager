@@ -16,7 +16,6 @@
                 class="bg-gray-50 p-6 rounded-xl shadow-md max-w-lg w-full flex flex-col items-center gap-6"
             >
                 <h2 class="text-xl font-bold mb-4">{{ fileName }}</h2>
-
                 <!-- Image Preview -->
                 <div
                     v-if="['png', 'jpg', 'jpeg'].includes(fileFormat)"
@@ -27,14 +26,13 @@
                         class="max-w-full max-h-96 rounded shadow"
                         :alt="fileName"
                     />
-                    <a
-                        :href="fileUrl"
-                        :download="fileName"
-                        class="mt-2 bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded"
-                        >Download Image</a
+                    <button
+                        @click="downloadFile()"
+                        class="cursor-pointer mt-2 bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded"
                     >
+                        Download Image
+                    </button>
                 </div>
-
                 <!-- PDF Download Only -->
                 <div
                     v-else-if="fileFormat === 'pdf'"
@@ -69,10 +67,10 @@
                         :href="fileUrl"
                         :download="fileName"
                         class="mt-2 bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded"
-                        >Download PDF</a
                     >
+                        Download PDF
+                    </a>
                 </div>
-
                 <!-- ZIP Download -->
                 <div
                     v-else-if="fileFormat === 'zip'"
@@ -102,10 +100,10 @@
                         :href="fileUrl"
                         :download="fileName"
                         class="mt-2 bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded"
-                        >Download ZIP</a
                     >
+                        Download ZIP
+                    </a>
                 </div>
-
                 <!-- Fallback -->
                 <div v-else class="flex flex-col items-center gap-2">
                     <span class="text-gray-500">Preview not available.</span>
@@ -113,8 +111,9 @@
                         :href="fileUrl"
                         :download="fileName"
                         class="bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded"
-                        >Download {{ fileName }}</a
                     >
+                        Download {{ fileName }}
+                    </a>
                 </div>
             </div>
         </div>
@@ -185,6 +184,7 @@
                     <button
                         class="bg-blue-600 hover:bg-blue-800 text-white px-4 py-2 rounded"
                         @click="sendApprovalRequest"
+                        :disabled="!approvalReason.trim() || loading"
                     >
                         Send Request
                     </button>
@@ -220,8 +220,10 @@
         </div>
     </div>
 </template>
+
 <script setup>
 import { ref, onMounted } from "vue";
+import { showSuccess, showError, showInfo } from "../utils/toast";
 import { useRoute } from "vue-router";
 import axiosInstance from "../axiosInstance";
 
@@ -234,8 +236,7 @@ const approvalMessage = ref("");
 const approvalReason = ref("");
 const password = ref("");
 
-const shortId = route.params.id;
-const realFileId = ref(route.query.file_id || "");
+const shortUrl = route.params.id;
 
 const fileUrl = ref("");
 const fileFormat = ref("");
@@ -244,84 +245,25 @@ const fileReady = ref(false);
 
 const showStatusModal = ref(false);
 
-async function fetchFile() {
-    loading.value = true;
+function resetModals() {
+    passwordModal.value = false;
+    approvalModal.value = false;
+    showStatusModal.value = false;
     error.value = "";
-    try {
-        const resp = await axiosInstance.get(`/api/file/get/${shortId}`);
-        showFile(resp.data);
-    } catch (err) {
-        const status = err.response?.status;
-        const data = err.response?.data || {};
-
-        if (status === 428) {
-            const type = data.type;
-
-            if (type === "not_requested") {
-                // show approval modal
-                approvalModal.value = true;
-            } else if (type === "pending") {
-                approvalMessage.value =
-                    "Your approval is pending. Please wait.";
-                showStatusModal.value = true;
-            } else if (type === "rejected") {
-                approvalMessage.value = "Your approval was rejected.";
-                showStatusModal.value = true;
-            } else {
-                approvalMessage.value =
-                    "Your approval status is invalid. Please contact our admins";
-                showStatusModal.value = true;
-            }
-        }
-    } finally {
-        loading.value = false;
-    }
+    approvalMessage.value = "";
 }
 
-async function submitPassword() {
-    loading.value = true;
-    error.value = "";
-    try {
-        const resp = await axiosInstance.post(`/api/file/get/${shortId}`, {
-            password: password.value,
-        });
-        passwordModal.value = false;
-        showFile(resp.data);
-    } catch (err) {
-        const status = err.response?.status;
-        const data = err.response?.data || {};
-        if (status === 428) {
-            passwordModal.value = false;
-            approvalModal.value = true;
-            if (!realFileId.value) realFileId.value = data.file_id;
-        } else {
-            error.value = data.message || "Incorrect password. Try again";
+function parseError(err) {
+    let data = err?.response?.data;
+    if (typeof data === "string") {
+        try {
+            data = JSON.parse(data);
+        } catch {
+            data = { error: data };
         }
-    } finally {
-        loading.value = false;
-        password.value = "";
     }
-}
-
-async function sendApprovalRequest() {
-    console.log(realFileId.value);
-
-    if (!approvalReason.value.trim()) {
-        approvalMessage.value = "Please enter a reason.";
-        return;
-    }
-
-    try {
-        await axiosInstance.post(`/api/approval/create`, {
-            file_id: realFileId.value,
-            reason: approvalReason.value.trim(),
-        });
-        approvalMessage.value =
-            "Approval request sent successfully. Please wait for confirmation.";
-    } catch (err) {
-        approvalMessage.value =
-            err.response?.data || "Failed to send approval request.";
-    }
+    if (!data || typeof data !== "object") data = { error: "Unknown error" };
+    return data;
 }
 
 function showFile(data) {
@@ -330,7 +272,7 @@ function showFile(data) {
     const staticUrl = backendBaseUrl + "/static/";
 
     fileUrl.value = staticUrl + data.file_address;
-    fileName.value = data.name || fileUrl.value.split("/").pop();
+    fileName.value = data.file_address.split("/").pop() || "file";
     fileFormat.value = getFileFormat(fileUrl.value);
     fileReady.value = true;
 }
@@ -344,5 +286,108 @@ function getFileFormat(fileUrl) {
     return filename.slice(dotIndex + 1).toLowerCase();
 }
 
-onMounted(fetchFile);
+async function handleFileAccess(fileShortUrl) {
+    loading.value = true;
+    error.value = "";
+    resetModals();
+
+    try {
+        const resp = await axiosInstance.get(`/api/file/get/${fileShortUrl}`);
+        showFile(resp.data);
+    } catch (err) {
+        const data = parseError(err);
+
+        if (err.response?.status === 412) {
+            // Approval is required
+            approvalModal.value = true;
+        } else if (
+            data.error === "password is required" ||
+            data.error === "incorrect password"
+        ) {
+            passwordModal.value = true;
+            error.value = data.error || "Password is required.";
+            showError(error.value);
+        } else {
+            error.value = data.error || "Failed to fetch file data.";
+            showError(error.value);
+        }
+    } finally {
+        loading.value = false;
+    }
+}
+
+async function submitPassword() {
+    loading.value = true;
+    error.value = "";
+    try {
+        const resp = await axiosInstance.post(`/api/file/get/${shortUrl}`, {
+            password: password.value,
+        });
+        passwordModal.value = false;
+        showFile(resp.data);
+    } catch (err) {
+        const data = parseError(err);
+        error.value = data.error || "Incorrect password. Try again";
+        showError(error.value);
+    } finally {
+        loading.value = false;
+        password.value = "";
+    }
+}
+
+async function sendApprovalRequest() {
+    if (!approvalReason.value.trim()) {
+        approvalMessage.value = "Please enter a reason.";
+        showError(approvalMessage.value);
+        return;
+    }
+
+    loading.value = true;
+    try {
+        await axiosInstance.post(`/api/approval/create`, {
+            file_id: shortUrl,
+            reason: approvalReason.value.trim(),
+        });
+        showInfo("Approval request sent. Please wait for confirmation.");
+        approvalModal.value = false;
+        approvalMessage.value =
+            "Approval request sent. Please wait for confirmation.";
+        showStatusModal.value = true;
+    } catch (err) {
+        const data = parseError(err);
+        approvalMessage.value =
+            data.error || "Failed to send approval request.";
+        showError(approvalMessage.value);
+    } finally {
+        loading.value = false;
+    }
+}
+
+async function downloadFile() {
+    try {
+        const res = await axiosInstance.get(`/api/file/download/${shortUrl}`, {
+            responseType: "blob",
+        });
+
+        console.log(res);
+        const url = URL.createObjectURL(res.data);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = fileName.value || `${shortUrl}.bin`;
+
+        document.body.appendChild(link);
+
+        link.click();
+        link.remove();
+
+        URL.revokeObjectURL(url);
+
+        showSuccess("Download started");
+    } catch (err) {
+        showError("Download failed");
+    }
+}
+
+onMounted(() => handleFileAccess(shortUrl));
 </script>

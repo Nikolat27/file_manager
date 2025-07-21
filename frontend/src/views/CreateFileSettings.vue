@@ -52,7 +52,9 @@
                     <label
                         for="approvable"
                         class="text-blue-800 font-medium"
-                        :class="isPlanFree ? 'opacity-60 cursor-not-allowed' : ''"
+                        :class="
+                            isPlanFree ? 'opacity-60 cursor-not-allowed' : ''
+                        "
                     >
                         Approver required
                     </label>
@@ -75,7 +77,9 @@
                     <label
                         for="viewOnly"
                         class="text-blue-800 font-medium"
-                        :class="isPlanFree ? 'opacity-60 cursor-not-allowed' : ''"
+                        :class="
+                            isPlanFree ? 'opacity-60 cursor-not-allowed' : ''
+                        "
                     >
                         View Only
                     </label>
@@ -85,7 +89,9 @@
                 <div>
                     <label
                         class="block text-blue-800 font-medium mb-1"
-                        :class="isPlanFree ? 'opacity-60  cursor-not-allowed' : ''"
+                        :class="
+                            isPlanFree ? 'opacity-60  cursor-not-allowed' : ''
+                        "
                     >
                         Expiration Date
                     </label>
@@ -112,7 +118,9 @@
                 <div>
                     <label
                         class="block text-blue-800 font-medium mb-1"
-                        :class="isPlanFree ? 'opacity-60 cursor-not-allowed' : ''"
+                        :class="
+                            isPlanFree ? 'opacity-60 cursor-not-allowed' : ''
+                        "
                     >
                         Max Downloads
                     </label>
@@ -199,6 +207,7 @@ function onSave() {
         })
         .then(() => {
             showSuccess("Settings saved successfully");
+            router.push({ name: "sharedUrls" });
         })
         .catch((err) => {
             showError(err.response.data);

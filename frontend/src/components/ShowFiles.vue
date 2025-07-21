@@ -316,25 +316,22 @@ function openUploadFileModal() {
 }
 
 async function downloadFile() {
-    const fileId = currentItem.value["id"];
-
     try {
+        const fileId = currentItem.value.id;
         const res = await axiosInstance.get(`/api/file/download/${fileId}`, {
             responseType: "blob",
         });
 
-        // Extract file extension from content-type header
-        const contentType = res.headers["content-type"] || "";
-        let ext = contentType.split("/")[1] || "bin"; // fallback to .bin
-
-        // For content types like "application/pdf"
-        if (ext.includes(";")) ext = ext.split(";")[0];
-
+        // Get extension from content-type (e.g., "image/png" → "png", "application/pdf" → "pdf")
+        let ext =
+            res.headers["content-type"]?.split("/")[1]?.split(";")[0] || "bin";
         const filename = `${fileId}.${ext}`;
+
         const url = URL.createObjectURL(res.data);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
+        const link = Object.assign(document.createElement("a"), {
+            href: url,
+            download: filename,
+        });
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -342,7 +339,7 @@ async function downloadFile() {
 
         showSuccess("Download started");
         closeModal();
-    } catch (err) {
+    } catch {
         showError("Download failed");
     }
 }
@@ -395,10 +392,6 @@ function renameFile() {
         .catch((err) => {
             showError(err.response.data);
         });
-}
-
-function handleEdit() {
-    openRenameFileModal();
 }
 
 function deleteFile(fileId) {
