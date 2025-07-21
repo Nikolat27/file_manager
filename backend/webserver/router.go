@@ -89,10 +89,11 @@ func (router *AppRouter) registerFolderRoutes(handler *handlers.Handler) {
 
 // registerApprovalRoutes -> Approvals
 func (router *AppRouter) registerApprovalRoutes(handler *handlers.Handler) {
-	router.CoreRouter.HandlerFunc("GET", "/api/approval/get", handler.GetApprovalsList)
+	router.CoreRouter.HandlerFunc("GET", "/api/approval/sent/get", handler.GetSendApprovalsList)
+	router.CoreRouter.HandlerFunc("GET", "/api/approval/received/get", handler.GetReceivedApprovalsList)
 	router.CoreRouter.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
 	router.CoreRouter.HandlerFunc("GET", "/api/approval/check/:id", handler.CheckApproval)
-	router.CoreRouter.HandlerFunc("PUT", "/api/approval/status", handler.UpdateApproval)
+	router.CoreRouter.HandlerFunc("PUT", "/api/approval/update/status", handler.UpdateApproval)
 	router.CoreRouter.HandlerFunc("DELETE", "/api/approval/delete/:id", handler.DeleteApproval)
 }
 

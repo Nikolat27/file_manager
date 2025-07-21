@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func (handler *Handler) GetApprovalsList(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) GetSendApprovalsList(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
 		utils.WriteError(w, http.StatusUnauthorized, err)
@@ -26,6 +26,46 @@ func (handler *Handler) GetApprovalsList(w http.ResponseWriter, r *http.Request)
 
 	filter := bson.M{
 		"sender_id": userObjectId,
+	}
+
+	approvals, err := handler.Models.Approval.GetAll(filter, bson.M{}, 1, 10)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+
+			response := map[string]any{
+				"approvals": nil,
+			}
+
+			utils.WriteJSONData(w, response)
+			return
+		}
+
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	response := map[string]any{
+		"approvals": approvals,
+	}
+
+	utils.WriteJSONData(w, response)
+}
+
+func (handler *Handler) GetReceivedApprovalsList(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	filter := bson.M{
+		"owner_id": userObjectId,
 	}
 
 	approvals, err := handler.Models.Approval.GetAll(filter, bson.M{}, 1, 10)

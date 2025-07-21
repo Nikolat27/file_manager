@@ -16,7 +16,7 @@
             <tbody>
                 <tr v-for="(approval, idx) in requests" :key="approval._id">
                     <td class="py-2 px-2">{{ idx + 1 }}</td>
-                    <td class="py-2 px-2">{{ approval.requester_name }}</td>
+                    <td class="py-2 px-2">{{ approval.sender_id }}</td>
                     <td class="py-2 px-2">{{ approval.file_name }}</td>
                     <td
                         class="py-2 px-2 truncate max-w-[180px]"
@@ -33,15 +33,15 @@
                         </span>
                     </td>
                     <td class="py-2 px-2 flex gap-2">
-                        <template v-if="approval.status === 'pending'">
+                        <!-- <template v-if="approval.status === 'pending'">
                             <button
-                                @click="approve(approval._id)"
+                                @click="approve(approval.id)"
                                 class="cursor-pointer text-green-600 hover:bg-green-100 rounded px-2 py-1"
                             >
                                 Approve
                             </button>
                             <button
-                                @click="reject(approval._id)"
+                                @click="reject(approval.id)"
                                 class="cursor-pointer text-red-500 hover:bg-red-100 rounded px-2 py-1"
                             >
                                 Reject
@@ -49,7 +49,19 @@
                         </template>
                         <template v-else>
                             <span class="text-gray-400 italic">Reviewed</span>
-                        </template>
+                        </template> -->
+                        <button
+                            @click="approve(approval.id)"
+                            class="cursor-pointer text-green-600 hover:bg-green-100 rounded px-2 py-1"
+                        >
+                            Approve
+                        </button>
+                        <button
+                            @click="reject(approval.id)"
+                            class="cursor-pointer text-red-500 hover:bg-red-100 rounded px-2 py-1"
+                        >
+                            Reject
+                        </button>
                     </td>
                 </tr>
                 <tr v-if="requests.length === 0">
@@ -64,6 +76,9 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
+import axiosInstance from "../axiosInstance";
+import { showSuccess } from "../utils/toast";
+
 const requests = ref([]);
 
 function statusClass(status) {
@@ -72,41 +87,61 @@ function statusClass(status) {
     if (status === "rejected") return "text-red-500 font-bold";
     return "";
 }
+
 function formatDate(str) {
     return str ? new Date(str).toLocaleString() : "-";
 }
+
 function approve(id) {
-    // call backend, set status to approved
+    const payload = {
+        approval_id: id,
+        status: "approved",
+    };
+
+    axiosInstance
+        .put("/api/approval/update/status", payload)
+        .then(() => {
+            fetchReceivedApprovals();
+            showSuccess("Approved successfully");
+        })
+        .catch((err) => {
+            console.log(err);
+        });
 }
+
 function reject(id) {
-    // call backend, set status to rejected
+    const payload = {
+        approval_id: id,
+        status: "rejected",
+    };
+
+    axiosInstance
+        .put("/api/approval/update/status", payload)
+        .then(() => {
+            fetchReceivedApprovals();
+            showSuccess("Rejected successfully");
+        })
+        .catch((err) => {
+            console.log(err);
+        });
 }
+
+function fetchReceivedApprovals() {
+    axiosInstance
+        .get("/api/approval/received/get")
+        .then((resp) => {
+            if (!resp.data.approvals) {
+                requests.value = [];
+            } else {
+                requests.value = resp.data.approvals;
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+        });
+}
+
 onMounted(() => {
-    requests.value = [
-        {
-            _id: "2001",
-            requester_name: "Alex N.",
-            file_name: "Marketing_Strategy_Notes.docx",
-            reason: "To add feedback from sales.",
-            created_at: "2025-07-19T11:20:00Z",
-            status: "pending",
-        },
-        {
-            _id: "2002",
-            requester_name: "Fatemeh S.",
-            file_name: "Meeting_Recording.mp4",
-            reason: "",
-            created_at: "2025-07-18T16:45:00Z",
-            status: "approved",
-        },
-        {
-            _id: "2003",
-            requester_name: "Ali M.",
-            file_name: "Demo_Prototype.zip",
-            reason: "Need to download and test.",
-            created_at: "2025-07-17T08:10:00Z",
-            status: "rejected",
-        },
-    ];
+    fetchReceivedApprovals();
 });
 </script>

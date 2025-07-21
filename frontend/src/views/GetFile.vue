@@ -149,7 +149,10 @@
                         Submit
                     </button>
                 </div>
-                <div v-if="error" class="mt-2 text-red-600 text-sm">
+                <div
+                    v-if="error"
+                    class="mt-2 text-red-600 text-lg font-semibold"
+                >
                     {{ error }}
                 </div>
             </div>

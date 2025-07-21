@@ -89,13 +89,12 @@ function deleteApproval(id) {
 
 function fetchSentApprovals() {
     axiosInstance
-        .get("/api/approval/get")
+        .get("/api/approval/sent/get")
         .then((resp) => {
             if (!resp.data.approvals) {
                 approvals.value = [];
             } else {
                 approvals.value = resp.data.approvals;
-                console.log(approvals.value);
             }
         })
         .catch((err) => {

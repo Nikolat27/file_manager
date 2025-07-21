@@ -40,30 +40,45 @@
 
             <div
                 @click="goToAllFiles"
-                class="w-[196px] h-[36px] rounded-xl bg-[#f7f5f2] hover:cursor-pointer hover:bg-[#ebe9e6] flex justify-start items-center pl-4"
+                :class="[
+                    'w-[196px] h-[36px] rounded-xl hover:cursor-pointer flex justify-start items-center pl-4',
+                    route.name === 'home'
+                        ? 'bg-black text-white'
+                        : 'bg-[#f7f5f2] text-black hover:bg-[#ebe9e6]',
+                ]"
             >
                 <span class="text-[14px] font-medium">All files</span>
             </div>
             <div
-                class="w-[196px] h-[36px] rounded-xl bg-[#f7f5f2] hover:cursor-pointer hover:bg-[#ebe9e6] flex justify-start items-center pl-4"
-            >
-                <span class="text-[14px] font-medium">Photos</span>
-            </div>
-            <div
                 @click="goToSharedUrls"
-                class="w-[196px] h-[36px] rounded-xl bg-[#f7f5f2] hover:cursor-pointer hover:bg-[#ebe9e6] flex justify-start items-center pl-4"
+                :class="[
+                    'w-[196px] h-[36px] rounded-xl hover:cursor-pointer flex justify-start items-center pl-4',
+                    route.name === 'sharedUrls'
+                        ? 'bg-black text-white'
+                        : 'bg-[#f7f5f2] text-black hover:bg-[#ebe9e6]',
+                ]"
             >
                 <span class="text-[14px] font-medium">Shared Urls</span>
             </div>
             <div
                 @click="goToSendApprovals"
-                class="w-[196px] h-[36px] rounded-xl bg-[#f7f5f2] hover:cursor-pointer hover:bg-[#ebe9e6] flex justify-start items-center pl-4"
+                :class="[
+                    'w-[196px] h-[36px] rounded-xl hover:cursor-pointer flex justify-start items-center pl-4',
+                    route.name === 'SentApprovals'
+                        ? 'bg-black text-white'
+                        : 'bg-[#f7f5f2] text-black hover:bg-[#ebe9e6]',
+                ]"
             >
                 <span class="text-[14px] font-medium">Sent Approvals</span>
             </div>
             <div
                 @click="goToReceivedApprovals"
-                class="w-[196px] h-[36px] rounded-xl bg-[#f7f5f2] hover:cursor-pointer hover:bg-[#ebe9e6] flex justify-start items-center pl-4"
+                :class="[
+                    'w-[196px] h-[36px] rounded-xl hover:cursor-pointer flex justify-start items-center pl-4',
+                    route.name === 'ReceivedApprovals'
+                        ? 'bg-black text-white'
+                        : 'bg-[#f7f5f2] text-black hover:bg-[#ebe9e6]',
+                ]"
             >
                 <span class="text-[14px] font-medium">Received Approvals</span>
             </div>
@@ -72,10 +87,11 @@
 </template>
 <script setup>
 import { useUserStore } from "../stores/user";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 const userStore = useUserStore();
 
+const route = useRoute();
 const router = useRouter();
 
 function handleLogout() {
