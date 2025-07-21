@@ -124,7 +124,7 @@ function handleUpload() {
     const formData = new FormData();
     formData.append("file", selectedFile.value);
     if (customFileName.value) {
-        formData.append("name", customFileName.value);
+        formData.append("file_name", customFileName.value);
     }
 
     axiosInstance
