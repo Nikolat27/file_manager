@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -42,10 +43,27 @@ func (approval *ApprovalModel) Create(fileId, ownerId, senderId primitive.Object
 
 	id, err := approval.db.Collection(ApprovalCollectionName).InsertOne(ctx, newApproval)
 	if err != nil {
-		return primitive.NilObjectID, err
+		return primitive.NilObjectID, fmt.Errorf("creating approval instance: %s", err)
 	}
 
 	return id.InsertedID.(primitive.ObjectID), nil
+}
+
+func (approval *ApprovalModel) HasAlreadyRequested(fileId, senderId primitive.ObjectID) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"file_id":   fileId,
+		"sender_id": senderId,
+	}
+
+	count, err := approval.db.Collection(ApprovalCollectionName).CountDocuments(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
 func (approval *ApprovalModel) UpdateStatus(id primitive.ObjectID, status string) error {
@@ -97,10 +115,6 @@ func (approval *ApprovalModel) CheckStatus(fileId, senderId primitive.ObjectID) 
 
 	var approvalInstance Approval
 	if err := approval.db.Collection(ApprovalCollectionName).FindOne(ctx, filter, approvalOptions).Decode(&approvalInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return "", errors.New("you have to submit an approval")
-		}
-
 		return "", err
 	}
 

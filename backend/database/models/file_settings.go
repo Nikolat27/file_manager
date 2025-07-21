@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -17,7 +18,7 @@ type FileSettingModel struct {
 type FileSettings struct {
 	Id             primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	UserId         primitive.ObjectID `json:"user_id" bson:"user_id"`
-	FileId         primitive.ObjectID `json:"file_id" bson:"file_id"`
+	FileId         primitive.ObjectID `json:"file_id" bson:"file_id"` // 1 to 1 relationship
 	ShortUrl       string             `json:"short_url" bson:"short_url"`
 	Salt           string             `json:"salt" bson:"salt"`
 	HashedPassword string             `json:"hashed_password" bson:"hashed_password"`
@@ -141,9 +142,38 @@ func (file *FileSettingModel) GetFileIdByUrl(shortUrl string) (primitive.ObjectI
 	return fileInstance.FileId, nil
 }
 
+func (file *FileSettingModel) GetUserId(fileId primitive.ObjectID) (primitive.ObjectID, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	filter := bson.M{
+		"file_id": fileId,
+	}
+
+	projection := bson.M{
+		"user_id": 1,
+	}
+
+	findOptions := options.FindOne()
+	findOptions.SetProjection(projection)
+
+	var fileInstance FileSettings
+	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return primitive.NilObjectID, errors.New("file with this short url does not exist")
+		}
+
+		return primitive.NilObjectID, err
+	}
+
+	return fileInstance.UserId, nil
+}
+
 func (file *FileSettingModel) IsApprovalRequired(fileId primitive.ObjectID) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	fmt.Println(fileId)
 
 	filter := bson.M{
 		"file_id": fileId,
@@ -158,6 +188,10 @@ func (file *FileSettingModel) IsApprovalRequired(fileId primitive.ObjectID) (boo
 
 	var fileInstance FileSettings
 	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return false, errors.New("setting with this file id does not exist")
+		}
+
 		return false, err
 	}
 
