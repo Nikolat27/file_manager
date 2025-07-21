@@ -33,7 +33,11 @@ func (handler *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := handler.Models.User.GetById(userObjectId)
+	filter := bson.M{
+		"_id": userObjectId,
+	}
+
+	user, err := handler.Models.User.Get(filter, bson.M{})
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -130,7 +134,15 @@ func (handler *Handler) UploadUserAvatar(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := handler.Models.User.GetById(userObjectId)
+	filter := bson.M{
+		"_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"avatar_url": 1,
+	}
+
+	user, err := handler.Models.User.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -181,7 +193,20 @@ func (handler *Handler) getUsedStorage(userId string) (int64, error) {
 		return 0, err
 	}
 
-	return handler.Models.User.GetUsedStorage(userObjectId)
+	filter := bson.M{
+		"_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"total_upload_size": 1,
+	}
+
+	userInstance, err := handler.Models.User.Get(filter, projection)
+	if err != nil {
+		return 0, err
+	}
+
+	return userInstance.TotalUploadSize, nil
 }
 
 func (handler *Handler) DeleteUserAccount(w http.ResponseWriter, r *http.Request) {
@@ -201,7 +226,17 @@ func (handler *Handler) DeleteUserAccount(w http.ResponseWriter, r *http.Request
 		Password string `json:"password"`
 	}
 
-	user, err := handler.Models.User.GetById(userObjectId)
+	filter := bson.M{
+		"_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"hashed_password": 1,
+		"salt":            1,
+		"avatar_url":      1,
+	}
+
+	user, err := handler.Models.User.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -252,15 +287,19 @@ func (handler *Handler) removeUserFilesAndAvatar(userId primitive.ObjectID, user
 		slog.Error("removing user avatar", "error", err)
 	}
 
-	fileAddresses, err := handler.Models.File.GetUserFileAddresses(userId)
+	filter := bson.M{
+		"owner_id": userId,
+	}
+
+	files, err := handler.Models.File.GetAll(filter, 1, 6)
 	if err != nil {
 		slog.Error("retrieving user file addresses", "error", err)
 		return err
 	}
 
-	for _, address := range fileAddresses {
-		if err := os.Remove(address); err != nil {
-			slog.Error(fmt.Sprintf("removing user file: %s", address), "error", err)
+	for _, file := range files {
+		if err := os.Remove(file.Address); err != nil {
+			slog.Error(fmt.Sprintf("removing user file: %s", file.Address), "error", err)
 			continue
 		}
 	}

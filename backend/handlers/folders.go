@@ -69,7 +69,18 @@ func (handler *Handler) GetFolderContents(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := handler.Models.Folder.Validate(folderObjectId, userObjectId); err != nil {
+	filter := bson.M{
+		"_id":      folderObjectId,
+		"owner_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"_id":  1,
+		"name": 1,
+	}
+
+	folder, err := handler.Models.Folder.Get(filter, projection)
+	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -80,14 +91,12 @@ func (handler *Handler) GetFolderContents(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// getting the files
-	files, err := handler.Models.File.GetByFolderId(folderObjectId, page, pageSize)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
+	filter = bson.M{
+		"folder_id": folderObjectId,
 	}
 
-	folderName, err := handler.Models.Folder.GetNameById(folderObjectId)
+	// getting the files
+	files, err := handler.Models.File.GetAll(filter, page, pageSize)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -95,7 +104,7 @@ func (handler *Handler) GetFolderContents(w http.ResponseWriter, r *http.Request
 
 	response := map[string]any{
 		"folder_id":   folderId,
-		"folder_name": folderName,
+		"folder_name": folder.Name,
 		"files":       files,
 	}
 
@@ -107,7 +116,20 @@ func (handler *Handler) ValidateFolderId(folderId, userId primitive.ObjectID) er
 		return nil
 	}
 
-	return handler.Models.Folder.Validate(folderId, userId)
+	filter := bson.M{
+		"_id":      folderId,
+		"owner_id": userId,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	if _, err := handler.Models.Folder.Get(filter, projection); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (handler *Handler) RenameFolder(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +157,16 @@ func (handler *Handler) RenameFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.Models.Folder.Validate(folderObjectId, userObjectId); err != nil {
+	filter := bson.M{
+		"_id":      folderObjectId,
+		"owner_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	if _, err := handler.Models.Folder.Get(filter, projection); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -187,7 +218,16 @@ func (handler *Handler) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.Models.Folder.Validate(folderObjectId, userObjectId); err != nil {
+	filter := bson.M{
+		"_id":      folderObjectId,
+		"owner_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	if _, err := handler.Models.Folder.Get(filter, projection); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}

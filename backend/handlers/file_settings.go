@@ -6,6 +6,8 @@ import (
 	"file_manager/utils"
 	"fmt"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 	"strconv"
 	"time"
@@ -35,25 +37,31 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	fileExist, err := handler.Models.File.IsExist(fileObjectId)
-	if err != nil {
+	filter := bson.M{
+		"_id": fileObjectId,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	if _, err = handler.Models.File.Get(filter, projection); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	if !fileExist {
-		utils.WriteError(w, http.StatusBadRequest, "file with this id does not exist")
-		return
+	filter = bson.M{
+		"file_id": fileObjectId,
 	}
 
-	settingExist, err := handler.Models.FileSettings.IsExist(fileObjectId)
-	if err != nil {
+	projection = bson.M{
+		"file_id": 1,
+	}
+
+	_, err = handler.Models.FileSettings.Get(filter, projection)
+	// If it exists, return error
+	if !errors.Is(err, mongo.ErrNoDocuments) {
 		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	if settingExist {
-		utils.WriteError(w, http.StatusBadRequest, "this file has settings already")
 		return
 	}
 
@@ -101,6 +109,7 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 
 	if err := handler.Models.FileSettings.Create(fileObjectId, userObjectId, fileShortUrl.String(), salt, hashedPassword, maxDownloads,
 		viewOnly, approvable, expireAt); err != nil {
+
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("creating file share setting instance: %w", err))
 		return
 	}
@@ -125,7 +134,11 @@ func (handler *Handler) GetFilesSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	files, err := handler.Models.FileSettings.GetAll(userObjectId)
+	filter := bson.M{
+		"user_id": userObjectId,
+	}
+
+	files, err := handler.Models.FileSettings.GetAll(filter)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -176,7 +189,7 @@ func getApproval(r *http.Request, plan string) (bool, error) {
 
 func getMaxDownloads(r *http.Request, plan string) (int64, error) {
 	maxDownloadsStr := r.FormValue("max_downloads")
-	if maxDownloadsStr == "" {
+	if maxDownloadsStr == "" || maxDownloadsStr == "-1" {
 		return -1, nil // -1 means unlimited downloads
 	}
 
