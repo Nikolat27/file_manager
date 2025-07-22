@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"file_manager/utils"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
@@ -142,6 +143,10 @@ func (handler *Handler) uploadAvatar(r *http.Request, maxUploadSize int64, teamI
 
 	file, err := utils.ReadFile(r, maxUploadSize, allowedTypes)
 	if err != nil {
+		if errors.Is(err, http.ErrMissingFile) {
+			return "", nil
+		}
+
 		return "", err
 	}
 
