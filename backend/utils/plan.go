@@ -1,8 +1,15 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"time"
+)
+
+const (
+	GBytes                               = 1024 * 1024 * 1024
+	TeamFreePlanMaxStorageBytes    int64 = 20 * GBytes
+	TeamPremiumPlanMaxStorageBytes int64 = 500 * GBytes
 )
 
 func GetUserMaxUploadSize(plan string) int64 {
@@ -69,4 +76,21 @@ func ValidateTeamPlan(plan string) error {
 	} else {
 		return fmt.Errorf("plan is invalid: %s. Must be either free or premium", plan)
 	}
+}
+
+func GetTeamTotalStorage(plan string) (int64, error) {
+	switch plan {
+	case "free":
+		return TeamFreePlanMaxStorageBytes, nil
+	case "premium":
+		return TeamPremiumPlanMaxStorageBytes, nil
+	case "":
+		return 0, errors.New("plan is missing")
+	default:
+		return 0, fmt.Errorf("invalid plan: %s", plan)
+	}
+}
+
+func GetTeamUploadDir(teamId string) string {
+	return "uploads/team_files/files/" + teamId + "/"
 }
