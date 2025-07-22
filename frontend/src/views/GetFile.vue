@@ -95,7 +95,6 @@
                             fill="#ccc"
                         />
                     </svg>
-                    <span class="font-mono">{{ fileName }}</span>
                     <a
                         :href="fileUrl"
                         :download="fileName"
