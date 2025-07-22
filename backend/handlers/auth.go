@@ -86,6 +86,7 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		"hashed_password": 1,
 		"salt":            1,
 		"plan":            1,
+		"avatar_url":      1,
 	}
 
 	user, err := handler.Models.User.Get(filter, projection)
@@ -93,6 +94,8 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("invalid username or password"))
 		return
 	}
+
+	fmt.Println(*user)
 
 	decodedHash, err := hex.DecodeString(user.HashedPassword)
 	if err != nil {
@@ -118,10 +121,11 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := map[string]interface{}{
-		"token":    token,
-		"userId":   user.Id.Hex(),
-		"username": input.Username,
-		"plan":     user.Plan,
+		"token":      token,
+		"userId":     user.Id.Hex(),
+		"username":   input.Username,
+		"plan":       user.Plan,
+		"avatar_url": user.AvatarUrl,
 	}
 
 	utils.WriteJSONData(w, response)

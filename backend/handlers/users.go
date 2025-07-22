@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"file_manager/utils"
 	"fmt"
@@ -43,13 +42,11 @@ func (handler *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.MarshalIndent(user, "", "\t")
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
+	response := map[string]interface{}{
+		"avatar_url": user.AvatarUrl,
 	}
 
-	utils.WriteJSON(w, data)
+	utils.WriteJSONData(w, response)
 }
 
 func (handler *Handler) UpdateUserPlan(w http.ResponseWriter, r *http.Request) {
