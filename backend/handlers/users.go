@@ -12,13 +12,6 @@ import (
 	"os"
 )
 
-const (
-	GBytes                               = 1024 * 1024 * 1024
-	UserFreePlanMaxStorageBytes    int64 = 2 * GBytes
-	UserPlusPlanMaxStorageBytes    int64 = 100 * GBytes
-	UserPremiumPlanMaxStorageBytes int64 = 1024 * GBytes
-)
-
 func (handler *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
@@ -89,7 +82,7 @@ func (handler *Handler) UpdateUserPlan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) IsUserEligibleToUpload(userId, userPlan string, fileSize int64) (int64, error) {
-	totalStorage, err := getUserTotalStorage(userPlan)
+	totalStorage, err := utils.GetUserTotalStorage(userPlan)
 	if err != nil {
 		return 0, err
 	}
@@ -302,21 +295,6 @@ func (handler *Handler) removeUserFilesAndAvatar(userId primitive.ObjectID, user
 	}
 
 	return nil
-}
-
-func getUserTotalStorage(plan string) (int64, error) {
-	switch plan {
-	case "free":
-		return UserFreePlanMaxStorageBytes, nil
-	case "plus":
-		return UserPlusPlanMaxStorageBytes, nil
-	case "premium":
-		return UserPremiumPlanMaxStorageBytes, nil
-	case "":
-		return 0, errors.New("plan is missing")
-	default:
-		return 0, fmt.Errorf("invalid plan: %s", plan)
-	}
 }
 
 func getUserAvatarUploadDir(userId string) string {

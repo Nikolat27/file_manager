@@ -344,6 +344,12 @@ func (handler *Handler) AddUserToTeam(w http.ResponseWriter, r *http.Request) {
 
 	// adding the new user
 	currentUsers := teamInstance.Users
+	if err := canAddUser(len(currentUsers), teamInstance.Plan); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// users updated
 	currentUsers = append(currentUsers, userObjectId)
 
 	updates := bson.M{
@@ -487,4 +493,17 @@ func (handler *Handler) isTeamEligibleToUpload(plan string, usedStorage, fileSiz
 
 	newTotalStorage := fileSize + usedStorage
 	return newTotalStorage, nil
+}
+
+func canAddUser(currentUsersAmount int, teamPlan string) error {
+	totalAllowedUsers := utils.GetTeamTotalUsers(teamPlan)
+	if totalAllowedUsers == -1 {
+		return nil
+	}
+
+	if currentUsersAmount+1 < totalAllowedUsers {
+		return nil
+	}
+
+	return fmt.Errorf("you have exceed you total user adding limitation. For free plan is :%d", totalAllowedUsers)
 }
