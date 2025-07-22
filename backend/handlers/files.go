@@ -362,17 +362,27 @@ func (handler *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	projection := bson.M{
-		"file_id": 1,
+		"file_id":                 1,
+		"max_downloads":           1,
+		"current_download_amount": 1,
 	}
 
-	fileInstance, err := handler.Models.FileSettings.Get(filter, projection)
+	settingInstance, err := handler.Models.FileSettings.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
+	// -1 means unlimited downloads
+	if settingInstance.MaxDownloads != -1 {
+		if settingInstance.CurrentDownloadAmount+1 > settingInstance.MaxDownloads {
+			utils.WriteError(w, http.StatusBadRequest, "you have exceed you maximum downloads amount")
+			return
+		}
+	}
+
 	filter = bson.M{
-		"_id": fileInstance.FileId,
+		"_id": settingInstance.FileId,
 	}
 
 	projection = bson.M{
@@ -401,7 +411,16 @@ func (handler *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, "download started successfully")
+	updates := bson.M{
+		"current_download_amount": settingInstance.CurrentDownloadAmount + 1,
+	}
+
+	if err := handler.Models.FileSettings.Update(settingInstance.Id, updates); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "download finished successfully")
 }
 
 func getUserUploadDir(userId string) string {
