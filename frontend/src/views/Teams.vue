@@ -1,7 +1,7 @@
 <template>
     <div class="w-full max-w-4xl mx-auto py-12 pt-24">
         <h1 class="text-2xl font-bold mb-6">My Teams</h1>
-        <div v-if="teams.length === 0" class="text-gray-500">
+        <div v-if="teams?.length === 0" class="text-gray-500">
             No teams found.
         </div>
 
@@ -38,7 +38,7 @@
                 <div
                     class="flex flex-wrap gap-4 mt-1 text-[13px] text-gray-600"
                 >
-                    <span><b>Users:</b> {{ team.users.length }}</span>
+                    <span><b>Users:</b> {{ team.users?.length }}</span>
                     <span
                         ><b>Storage:</b>
                         {{ formatMB(team.storage_used) }} MB</span
@@ -97,6 +97,7 @@ function fetchUserTeams() {
         .get("/api/team/get")
         .then((resp) => {
             teams.value = resp.data;
+            console.log(resp.data);
         })
         .catch((err) => {
             console.error(err);
@@ -108,6 +109,7 @@ function deleteTeam(teamId) {
         .delete(`/api/team/delete/${teamId}`)
         .then(() => {
             showSuccess("deleted team successfully");
+            fetchUserTeams();
         })
         .catch((err) => {
             showError(err.response.data.error);
