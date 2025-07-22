@@ -58,11 +58,18 @@ async function login() {
             headers: headers,
         })
         .then((resp) => {
+            const backendUrl =
+                import.meta.env.backendUrl || "http://localhost:8000";
+
+            const staticUrl = backendUrl + "/static/";
+            const avatarUrl = staticUrl + resp.data.avatar_url;
+
             userStore.setUser({
                 id: resp.data.id,
                 username: resp.data.username,
                 plan: resp.data.plan,
                 token: resp.data.token,
+                avatarUrl: avatarUrl,
             });
 
             showSuccess("User logged in successfully");
