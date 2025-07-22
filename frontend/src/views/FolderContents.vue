@@ -167,12 +167,12 @@
             <div
                 class="bg-blue-600 rounded-2xl shadow-2xl p-8 w-80 flex flex-col gap-4 items-center"
             >
-                <button
+                <!-- <button
                     @click="downloadFile(selectedFile.id)"
                     class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
                 >
                     Download
-                </button>
+                </button> -->
                 <button
                     @click="openRenameFileModal"
                     class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"

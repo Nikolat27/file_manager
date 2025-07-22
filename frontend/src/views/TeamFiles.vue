@@ -39,8 +39,11 @@
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="folder in folders" :key="'folder-' + folder.id">
-                    <td class="px-4 py-2 flex flex-row items-center gap-x-2 z">
+                <tr v-for="folder in folders" :key="folder?.id">
+                    <td
+                        @click="goToFolder(folder?.id)"
+                        class="px-4 py-2 flex flex-row items-center gap-x-2 z"
+                    >
                         <span title="folder">
                             <!-- Folder Icon -->
                             <svg
@@ -68,6 +71,11 @@
                     </td>
                     <td class="px-4 py-2 text-sm">no expiration for folders</td>
                     <td
+                        class="relative px-2 text-sm select-none pl-8 pb-4 pt-2"
+                    >
+                        <span>no view</span>
+                    </td>
+                    <td
                         class="relative px-4 py-2 text-2xl font-bold cursor-pointer select-none pl-8 pb-4"
                     >
                         <span
@@ -77,7 +85,7 @@
                         >
                     </td>
                 </tr>
-                <tr v-for="file in files" :key="'file-' + file.id">
+                <tr v-for="file in files" :key="file?.id">
                     <td class="px-4 py-2 flex flex-row items-center gap-x-2">
                         <span title="file">
                             <!-- File Icon -->
@@ -105,12 +113,16 @@
                         {{ file.expire_at ? formatDate(file.expire_at) : "-" }}
                     </td>
                     <td
-                        class="relative px-4 py-2 text-xl font-semibold cursor-pointer select-none pl-8 pb-4"
+                        class="relative px-4 text-xl font-semibold select-none pl-8 pb-4"
                     >
                         <span
-                            @click="goToFile(file.id)"
+                            v-if="filesShortUrls[file?.id]"
+                            @click="goToFile(file?.id)"
                             class="cursor-pointer hover:text-blue-600 !text-[15px]"
                             >Click</span
+                        >
+                        <span v-else class="text-black !text-[13px]"
+                            >no url</span
                         >
                     </td>
                     <td
@@ -167,12 +179,6 @@
                         class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
                     >
                         Create Short Url
-                    </button>
-                    <button
-                        @click="downloadFile()"
-                        class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
-                    >
-                        Download
                     </button>
                     <button
                         @click="openRenameFileModal"
@@ -417,9 +423,6 @@ import { ref, onMounted, watch, reactive } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axiosInstance from "../axiosInstance";
 import { showError, showSuccess } from "../utils/toast";
-import { useUserStore } from "../stores/user";
-
-const userStore = useUserStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -492,32 +495,6 @@ function closeModal() {
 function openUploadFileToFolderModal() {
     showUploadFileToFolderModal.value = true;
     showModal.value = false;
-}
-
-async function downloadFile() {
-    try {
-        const fileId = currentItem.value.id;
-        const res = await axiosInstance.get(`/api/file/download/${fileId}`, {
-            responseType: "blob",
-        });
-        let ext =
-            res.headers["content-type"]?.split("/")[1]?.split(";")[0] || "bin";
-        const filename = `${fileId}.${ext}`;
-        const url = URL.createObjectURL(res.data);
-        const link = Object.assign(document.createElement("a"), {
-            href: url,
-            download: filename,
-        });
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-
-        showSuccess("Download started");
-        closeModal();
-    } catch {
-        showError("Download failed");
-    }
 }
 
 async function uploadFile() {
@@ -689,6 +666,10 @@ function formatDate(dateStr) {
 }
 
 function goToFile(id) {
+    if (!filesShortUrls) {
+        return;
+    }
+
     const shortUrl = filesShortUrls[id];
     router.push({ name: "GetFile", params: { id: shortUrl } });
 }
