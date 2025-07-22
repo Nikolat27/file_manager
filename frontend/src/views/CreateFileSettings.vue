@@ -60,31 +60,6 @@
                     </label>
                 </div>
 
-                <!-- View Only (disabled if free) -->
-                <div class="flex items-center gap-2">
-                    <input
-                        v-model="viewOnly"
-                        type="checkbox"
-                        id="viewOnly"
-                        class="accent-blue-600"
-                        :disabled="isPlanFree"
-                        :class="
-                            isPlanFree
-                                ? 'opacity-60 backdrop-blur cursor-not-allowed'
-                                : ''
-                        "
-                    />
-                    <label
-                        for="viewOnly"
-                        class="text-blue-800 font-medium"
-                        :class="
-                            isPlanFree ? 'opacity-60 cursor-not-allowed' : ''
-                        "
-                    >
-                        View Only
-                    </label>
-                </div>
-
                 <!-- Expiration Date -->
                 <div>
                     <label
@@ -125,7 +100,7 @@
                         Max Downloads
                     </label>
                     <input
-                        v-model.number="maxDownloads"
+                        v-model="maxDownloads"
                         type="number"
                         min="1"
                         :disabled="isPlanFree"
@@ -171,7 +146,6 @@ if (!fileId) {
 // Form fields
 const password = ref("");
 const approvable = ref(false);
-const viewOnly = ref(false);
 const expirationDate = ref("");
 const maxDownloads = ref(null);
 
@@ -181,7 +155,6 @@ function onSave() {
     const formData = new FormData();
     formData.append("password", password.value);
     formData.append("approvable", !isPlanFree.value ? approvable.value : false);
-    formData.append("view_only", !isPlanFree.value ? viewOnly.value : false);
     formData.append(
         "expiration_at",
         !isPlanFree.value && expirationDate.value
@@ -189,12 +162,13 @@ function onSave() {
             : ""
     );
 
-    if (!maxDownloads.value || !isPlanFree.value) {
+    if (!maxDownloads.value || isPlanFree.value) {
         formData.append("max_downloads", -1); // default (unlimited)
     } else {
         formData.append("max_downloads", maxDownloads.value);
     }
 
+    console.log(formData);
     axiosInstance
         .post(`/api/file/settings/create/${fileId}`, formData, {
             headers: { "Content-Type": "multipart/form-data" },

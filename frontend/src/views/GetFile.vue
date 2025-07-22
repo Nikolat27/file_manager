@@ -442,7 +442,7 @@ async function downloadFile() {
         URL.revokeObjectURL(url);
         showSuccess("Download started");
     } catch (err) {
-        showError("Download failed");
+        showError(err.response?.data.error || "Download failed");
     }
 }
 

@@ -12,7 +12,6 @@
                     <th class="px-4 py-2">Max Downloads</th>
                     <th class="px-4 py-2">Created At</th>
                     <th class="px-4 py-2">Expires At</th>
-                    <th class="px-4 py-2">View Only</th>
                     <th class="px-4 py-2">Actions</th>
                 </tr>
             </thead>
@@ -42,10 +41,6 @@
                     </td>
                     <td class="px-4 py-2 text-sm">
                         {{ formatDate(url.expiration_at) }}
-                    </td>
-                    <td class="px-4 py-2 text-center">
-                        <span title="Only Read" v-if="url.view_only">👁️</span>
-                        <span title="Read-Write" v-else>✏️</span>
                     </td>
                     <td class="px-4 py-2 flex items-center gap-2">
                         <button
