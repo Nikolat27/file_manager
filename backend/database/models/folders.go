@@ -17,17 +17,19 @@ type FolderModel struct {
 type Folder struct {
 	Id        primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 	OwnerId   primitive.ObjectID `json:"owner_id" bson:"owner_id"`
+	TeamId    primitive.ObjectID `json:"team_id" bson:"team_id"`
 	Name      string             `json:"name" bson:"name"`
 	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
-func (folder *FolderModel) Create(ownerId primitive.ObjectID, name string) (primitive.ObjectID, error) {
+func (folder *FolderModel) Create(ownerId, teamId primitive.ObjectID, name string) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	newFolder := &Folder{
 		OwnerId:   ownerId,
+		TeamId:    teamId,
 		Name:      name,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -85,13 +87,9 @@ func (folder *FolderModel) Rename(id primitive.ObjectID, updates any) error {
 	return nil
 }
 
-func (folder *FolderModel) GetAll(ownerId primitive.ObjectID, page, pageSize int64) ([]Folder, error) {
+func (folder *FolderModel) GetAll(filter bson.M, page, pageSize int64) ([]Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	filter := bson.M{
-		"owner_id": ownerId,
-	}
 
 	findOptions := options.Find()
 	findOptions.SetSkip((page - 1) * pageSize)

@@ -48,6 +48,7 @@ func (team *TeamModel) Create(id, ownerId primitive.ObjectID, name, description,
 		Admins:      []primitive.ObjectID{ownerId},
 		Users:       []primitive.ObjectID{ownerId},
 		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	newId, err := team.db.Collection("teams").InsertOne(ctx, newTeam)
@@ -56,6 +57,30 @@ func (team *TeamModel) Create(id, ownerId primitive.ObjectID, name, description,
 	}
 
 	return newId.InsertedID.(primitive.ObjectID), nil
+}
+
+// GetAll -> Returns All
+func (team *TeamModel) GetAll(filter, projection bson.M, page, pageLimit int64) ([]Team, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	findOptions := options.Find()
+	findOptions.SetProjection(projection)
+	findOptions.SetSkip((page - 1) * pageLimit)
+	findOptions.SetLimit(pageLimit)
+
+	var teams []Team
+
+	cursor, err := team.db.Collection("teams").Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cursor.All(ctx, &teams); err != nil {
+		return nil, err
+	}
+
+	return teams, nil
 }
 
 // Get -> Returns One
