@@ -1,3 +1,6 @@
+Install Dependencies
+npm install
+
 .env file:
 backendBaseUrl=<your backend>
 
