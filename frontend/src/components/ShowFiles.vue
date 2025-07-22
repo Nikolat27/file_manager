@@ -1,15 +1,16 @@
 <template>
-    <div class="flex flex-col gap-y-6">
+    <div class="flex flex-col gap-y-6 pl-32">
         <span class="text-[22px] font-bold">All files</span>
 
         <table
-            class="w-[81%] h-auto border border-blue-200 rounded-xl overflow-hidden"
+            class="w-[70%] h-auto border border-blue-200 rounded-xl overflow-hidden"
         >
             <thead>
                 <tr class="bg-gray-100 text-gray-700">
                     <th class="text-left px-4 py-2 w-[70%]">Name</th>
                     <th class="text-left px-4 py-2 w-[15%]">Created At</th>
                     <th class="text-left px-4 py-2 w-[15%]">Expire At</th>
+                    <th class="text-left px-4 py-2 w-[15%]">View</th>
                     <th class="text-left px-4 py-2 w-[15%]">More</th>
                 </tr>
             </thead>
@@ -89,6 +90,14 @@
                             file?.expire_at ? formatDate(file?.expire_at) : "-"
                         }}
                     </td>
+                    <td
+                        @click="goToFile(fileShortUrls[file?.id])"
+                        v-if="fileShortUrls[file?.id]"
+                        class="px-4 py-2 cursor-pointer hover:text-blue-800 text-blue-600 font-semibold"
+                    >
+                        Click
+                    </td>
+                    <td v-else class="px-4 py-2">no url</td>
                     <td
                         class="relative px-4 py-2 text-xl font-semibold cursor-pointer select-none pl-8 pb-4"
                     >
@@ -276,7 +285,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, reactive } from "vue";
 import axiosInstance from "../axiosInstance";
 import { useRouter } from "vue-router";
 import { showError, showSuccess } from "../utils/toast";
@@ -430,9 +439,12 @@ function formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString("en-CA");
 }
 
+let fileShortUrls = reactive([]);
+
 function getFiles() {
     axiosInstance.get("/api/file/get").then((resp) => {
         files.value = resp.data.files;
+        fileShortUrls = resp.data.shortUrls;
     });
 }
 
@@ -440,6 +452,10 @@ function getFolders() {
     axiosInstance.get("/api/folder/get").then((resp) => {
         folders.value = resp.data;
     });
+}
+
+function goToFile(shortUrl) {
+    router.push({ name: "GetFile", params: { id: shortUrl } });
 }
 
 function goToFolder(id) {
