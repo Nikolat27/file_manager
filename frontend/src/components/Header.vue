@@ -8,7 +8,17 @@
             class="w-[922px] h-[40px] hover:outline-2 outline-gray-400 outline-1 hover:outline-black rounded-2xl pl-4"
             placeholder="Search for file names"
         />
-        <button @click="handleSearch">search</button>
+        <button
+            :class="
+                searchText?.length === 0
+                    ? 'cursor-default opacity-60'
+                    : 'cursor-pointer opacity-100'
+            "
+            class="ml-4 text-white bg-blue-600 rounded-full w-20 h-10 font-semibold"
+            @click="handleSearch"
+        >
+            search
+        </button>
 
         <div
             class="h-[40px] absolute right-[300px] flex flex-row items-center gap-x-4 mr-6"
