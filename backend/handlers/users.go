@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"log/slog"
 	"net/http"
 	"os"
@@ -171,6 +172,75 @@ func (handler *Handler) UploadUserAvatar(w http.ResponseWriter, r *http.Request)
 	}
 
 	utils.WriteJSON(w, "user`s avatar uploaded successfully")
+}
+
+func (handler *Handler) SearchUserContents(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	searchQuery := r.URL.Query().Get("q")
+	if searchQuery == "" {
+		utils.WriteError(w, http.StatusBadRequest, "your search query is empty")
+		return
+	}
+
+	filter := bson.M{
+		"name":     bson.M{"$regex": searchQuery},
+		"owner_id": userObjectId,
+	}
+
+	files, err := handler.Models.File.GetAll(filter, 1, 10)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	shortUrls := map[string]any{}
+
+	for _, file := range files {
+		filter := bson.M{
+			"file_id": file.Id,
+		}
+
+		projection := bson.M{
+			"short_url": 1,
+		}
+
+		setting, err := handler.Models.FileSettings.Get(filter, projection)
+		if err != nil {
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				continue
+			}
+
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		shortUrls[file.Id.Hex()] = setting.ShortUrl
+	}
+
+	folders, err := handler.Models.Folder.GetAll(filter, 1, 10)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	response := map[string]any{
+		"files":     files,
+		"folders":   folders,
+		"shortUrls": shortUrls,
+	}
+	
+	utils.WriteJSONData(w, response)
 }
 
 func (handler *Handler) getUsedStorage(userId string) (int64, error) {

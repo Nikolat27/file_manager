@@ -3,10 +3,12 @@
         class="w-full h-[72px] flex flex-row items-center absolute top-0 left-[300px] px-6"
     >
         <input
+            v-model="searchText"
             type="text"
             class="w-[922px] h-[40px] hover:outline-2 outline-gray-400 outline-1 hover:outline-black rounded-2xl pl-4"
             placeholder="Search for file names"
         />
+        <button @click="handleSearch">search</button>
 
         <div
             class="h-[40px] absolute right-[300px] flex flex-row items-center gap-x-4 mr-6"
@@ -106,6 +108,20 @@ import axiosInstance from "../axiosInstance";
 import { useUserStore } from "../stores/user";
 import defaultAvatarUrl from "../assets/images/images.png";
 
+import { useRouter } from "vue-router";
+
+const searchText = ref("");
+const router = useRouter();
+
+function handleSearch() {
+    if (!searchText.value) {
+        return;
+    }
+
+    router.push({ name: "UserSearch", query: { q: searchText.value } });
+    return;
+}
+
 const userStore = useUserStore();
 
 const showAvatarModal = ref(false);
@@ -163,7 +179,7 @@ async function uploadAvatar() {
 }
 
 async function getUserData() {
-    axiosInstance.get("/api/user").then((resp) => {
+    axiosInstance.get("/api/user/get").then((resp) => {
         const backendUrl =
             import.meta.env.backendUrl || "http://localhost:8000";
 

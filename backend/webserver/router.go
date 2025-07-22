@@ -51,10 +51,11 @@ func (router *AppRouter) registerAuthRoutes(handler *handlers.Handler) {
 
 // registerUserRoutes -> Users
 func (router *AppRouter) registerUserRoutes(handler *handlers.Handler) {
-	router.CoreRouter.HandlerFunc("GET", "/api/user", handler.GetUser)
 	router.CoreRouter.HandlerFunc("DELETE", "/api/user/delete", handler.DeleteUserAccount)
 	router.CoreRouter.HandlerFunc("PUT", "/api/user/plan/change", handler.UpdateUserPlan)
 	router.CoreRouter.HandlerFunc("POST", "/api/user/avatar/upload", handler.UploadUserAvatar)
+	router.CoreRouter.HandlerFunc("GET", "/api/user/search", handler.SearchUserContents)
+	router.CoreRouter.HandlerFunc("GET", "/api/user/get", handler.GetUser)
 }
 
 // registerFileRoutes -> Files

@@ -12,6 +12,7 @@ import ReceivedApprovals from "../views/ReceivedApprovals.vue";
 import TeamsView from "../views/Teams.vue";
 import TeamFilesView from "../views/TeamFiles.vue";
 import PlansView from "../views/Plans.vue";
+import UserSearchView from "../views/UserSearch.vue";
 
 const routes = [
     { path: "/", redirect: "/home" },
@@ -72,6 +73,11 @@ const routes = [
         path: "/plans",
         name: "plans",
         component: PlansView,
+    },
+    {
+        path: "/search",
+        name: "UserSearch",
+        component: UserSearchView,
     },
 ];
 
