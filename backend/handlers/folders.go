@@ -230,16 +230,22 @@ func (handler *Handler) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filter := bson.M{
-		"_id":      folderObjectId,
-		"owner_id": userObjectId,
+		"_id": folderObjectId,
 	}
 
 	projection := bson.M{
-		"_id": 1,
+		"_id":      1,
+		"owner_id": 1,
 	}
 
-	if _, err := handler.Models.Folder.Get(filter, projection); err != nil {
+	folderInstance, err := handler.Models.Folder.Get(filter, projection)
+	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if folderInstance.OwnerId != userObjectId {
+		utils.WriteError(w, http.StatusBadRequest, "only the folder owner can delete it")
 		return
 	}
 
@@ -275,8 +281,7 @@ func (handler *Handler) GetFoldersList(w http.ResponseWriter, r *http.Request) {
 		}
 
 		filter = bson.M{
-			"owner_id": userObjectId,
-			"team_id":  teamObjectId,
+			"team_id": teamObjectId,
 		}
 	} else {
 		filter = bson.M{

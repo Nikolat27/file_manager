@@ -16,6 +16,13 @@
             >
                 Upload File
             </button>
+            <button
+                title="only admins can add users"
+                class="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-700"
+                @click="showAddUserModal = true"
+            >
+                Add User
+            </button>
         </div>
 
         <!-- Table -->
@@ -27,6 +34,7 @@
                     <th class="text-left px-4 py-2 w-[70%]">Name</th>
                     <th class="text-left px-4 py-2 w-[15%]">Created At</th>
                     <th class="text-left px-4 py-2 w-[15%]">Expire At</th>
+                    <th class="text-left px-4 py-2 w-[15%]">View</th>
                     <th class="text-left px-4 py-2 w-[15%]">More</th>
                 </tr>
             </thead>
@@ -51,10 +59,7 @@
                                 />
                             </svg>
                         </span>
-                        <span
-                            @click="goToFolder(folder.id)"
-                            class="cursor-pointer hover:underline"
-                        >
+                        <span class="cursor-pointer hover:underline">
                             {{ folder.name }}
                         </span>
                     </td>
@@ -98,6 +103,15 @@
                     <td class="px-4 py-2">{{ formatDate(file.created_at) }}</td>
                     <td class="px-4 py-2">
                         {{ file.expire_at ? formatDate(file.expire_at) : "-" }}
+                    </td>
+                    <td
+                        class="relative px-4 py-2 text-xl font-semibold cursor-pointer select-none pl-8 pb-4"
+                    >
+                        <span
+                            @click="goToFile(file.id)"
+                            class="cursor-pointer hover:text-blue-600 !text-[15px]"
+                            >Click</span
+                        >
                     </td>
                     <td
                         class="relative px-4 py-2 text-xl font-semibold cursor-pointer select-none pl-8 pb-4"
@@ -358,12 +372,40 @@
                     >
                         Cancel
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add User Modal -->
+        <div
+            v-if="showAddUserModal"
+            class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+        >
+            <div
+                class="bg-white rounded-2xl shadow-xl p-8 w-[350px] flex flex-col gap-4"
+            >
+                <h2 class="text-xl font-bold mb-2">Add User to Team</h2>
+                <input
+                    v-model="newUserId"
+                    placeholder="Enter User ID"
+                    class="border px-3 py-2 rounded-lg w-full mb-2"
+                />
+                <div class="flex gap-3">
                     <button
-                        @click="deleteFileFromModal"
-                        class="flex-1 py-2 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-700 transition"
+                        @click="addUser"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700"
                     >
-                        Delete
+                        Add
                     </button>
+                    <button
+                        @click="showAddUserModal = false"
+                        class="bg-gray-300 text-gray-800 px-4 py-2 rounded-xl hover:bg-gray-400"
+                    >
+                        Cancel
+                    </button>
+                </div>
+                <div v-if="errorMsg" class="text-red-600 text-sm font-semibold">
+                    {{ errorMsg }}
                 </div>
             </div>
         </div>
@@ -371,7 +413,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, reactive } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axiosInstance from "../axiosInstance";
 import { showError, showSuccess } from "../utils/toast";
@@ -398,10 +440,34 @@ const newFolderName = ref("");
 const files = ref([]);
 const folders = ref([]);
 
+const showAddUserModal = ref(false);
+const newUserId = ref("");
+const errorMsg = ref("");
+
 const customFileName = ref("");
 watch([showUploadFileModal, showUploadFileToFolderModal], ([valA, valB]) => {
     if (!valA && !valB) customFileName.value = "";
 });
+
+async function addUser() {
+    if (!newUserId.value) {
+        errorMsg.value = "User ID cannot be empty";
+        return;
+    }
+    errorMsg.value = "";
+
+    try {
+        // Adjust endpoint as needed!
+        await axiosInstance.post(`/api/team/user/add/${route.params.id}`, {
+            user_id: newUserId.value,
+        });
+        showAddUserModal.value = false;
+        newUserId.value = "";
+        showSuccess("User added successfully");
+    } catch (err) {
+        errorMsg.value = err.response?.data?.error || "Failed to add user";
+    }
+}
 
 function openModal(item, isFolder) {
     showModal.value = true;
@@ -464,14 +530,18 @@ async function uploadFile() {
     }
 
     try {
-        await axiosInstance.post(`/api/team/file/upload/${route.params.id}`, formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-        });
+        await axiosInstance.post(
+            `/api/team/file/upload/${route.params.id}`,
+            formData,
+            {
+                headers: { "Content-Type": "multipart/form-data" },
+            }
+        );
         showSuccess("File uploaded successfully");
         showUploadFileModal.value = false;
         getFiles();
     } catch (err) {
-        showError(err.response?.data || "Upload failed");
+        showError(err.response?.data.error || "Upload failed");
     }
 }
 
@@ -498,7 +568,7 @@ function uploadFileToFolder() {
             getFiles();
         })
         .catch((err) => {
-            showError(err.response?.data || "Upload failed");
+            showError(err.response?.data.error || "Upload failed");
         });
 }
 
@@ -525,7 +595,8 @@ function renameFile() {
             getFiles();
         })
         .catch((err) => {
-            showError(err.response?.data || "Rename failed");
+            closeModal();
+            showError(err.response?.data.error || "Rename failed");
         });
 }
 
@@ -537,7 +608,7 @@ function deleteFile(fileId) {
             getFiles();
         })
         .catch((err) => {
-            showError(err.response?.data || "Delete failed");
+            showError(err.response?.data.error || "Delete failed");
         });
 }
 
@@ -568,7 +639,8 @@ function renameFolder() {
             getFolders();
         })
         .catch((err) => {
-            showError(err.response?.data || "Rename failed");
+            showError(err.response?.data.error || "Rename failed");
+            closeModal();
         });
 }
 
@@ -580,7 +652,7 @@ function deleteFolder(folderId) {
             getFolders();
         })
         .catch((err) => {
-            showError(err.response?.data || "Delete failed");
+            showError(err.response?.data.error || "Delete failed");
         });
 }
 
@@ -604,7 +676,7 @@ async function createFolder() {
         newFolderName.value = "";
         getFolders();
     } catch (err) {
-        showError(err.response?.data || "Create failed");
+        showError(err.response?.data.error || "Create failed");
     }
 }
 
@@ -613,11 +685,19 @@ function formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString("en-CA");
 }
 
+function goToFile(id) {
+    const shortUrl = filesShortUrls[id];
+    router.push({ name: "GetFile", params: { id: shortUrl } });
+}
+
+const filesShortUrls = reactive([]);
+
 function getFiles() {
     axiosInstance
         .get(`/api/file/get?team_id=${route.params.id}`)
         .then((resp) => {
-            files.value = resp.data;
+            files.value = resp.data.files;
+            Object.assign(filesShortUrls, resp.data.shortUrls);
         });
 }
 

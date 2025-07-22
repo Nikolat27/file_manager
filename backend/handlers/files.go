@@ -106,8 +106,7 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 		}
 
 		filter = bson.M{
-			"owner_id": userObjectId,
-			"team_id":  teamObjectId,
+			"team_id": teamObjectId,
 		}
 	} else {
 		filter = bson.M{
@@ -116,22 +115,39 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	file, err := handler.Models.File.GetAll(filter, pageNumber, pageLimit)
+	files, err := handler.Models.File.GetAll(filter, pageNumber, pageLimit)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	data, err := json.MarshalIndent(file, "", "\t")
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return
+	shortUrls := map[string]any{}
+
+	for _, file := range files {
+		shortUrls[file.Id.Hex()] = handler.getFileShortUrl(file.Id)
 	}
 
-	utils.WriteJSON(w, data)
+	response := map[string]any{
+		"files":     files,
+		"shortUrls": shortUrls,
+	}
+
+	utils.WriteJSONData(w, response)
 }
 
 func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("checking auth: %w", err))
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
+		return
+	}
+
 	fileId, err := utils.ParseIdParam(r.Context())
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -149,12 +165,18 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	projection := bson.M{
-		"address": 1,
+		"address":  1,
+		"owner_id": 1,
 	}
 
 	fileInstance, err := handler.Models.File.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if fileInstance.OwnerId != userObjectId {
+		utils.WriteError(w, http.StatusBadRequest, "only the file owner can delete it")
 		return
 	}
 
@@ -181,6 +203,18 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("checking auth: %w", err))
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
+		return
+	}
+
 	fileId, err := utils.ParseIdParam(r.Context())
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -190,6 +224,25 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	fileObjectId, err := utils.ToObjectID(fileId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	filter := bson.M{
+		"_id": fileObjectId,
+	}
+
+	projection := bson.M{
+		"owner_id": 1,
+	}
+
+	file, err := handler.Models.File.Get(filter, projection)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if file.OwnerId != userObjectId {
+		utils.WriteError(w, http.StatusBadRequest, "only the file owner can rename it")
 		return
 	}
 
@@ -477,4 +530,20 @@ func checkPasswordAccess(ownerId, requesterId primitive.ObjectID, rawPassword st
 		[]byte(fileSettings.Salt),
 		[]byte(rawPassword),
 	)
+}
+
+func (handler *Handler) getFileShortUrl(fileId primitive.ObjectID) string {
+	filter := bson.M{
+		"file_id": fileId,
+	}
+
+	projection := bson.M{
+		"short_url": 1,
+	}
+
+	setting, err := handler.Models.FileSettings.Get(filter, projection)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return ""
+	}
+	return setting.ShortUrl
 }

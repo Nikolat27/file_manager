@@ -96,7 +96,7 @@
     </div>
 </template>
 <script setup>
-import { showSuccess } from "../utils/toast";
+import { showError, showSuccess } from "../utils/toast";
 import { ref } from "vue";
 import axiosInstance from "../axiosInstance";
 import { useUserStore } from "../stores/user";
@@ -153,13 +153,11 @@ async function uploadAvatar() {
         closeAvatarModal();
         getUserData();
     } catch (err) {
-        console.error("Avatar upload failed:", err);
+        showError(err.response.data.error || "Failed to upload avatar");
     }
 }
 
 async function getUserData() {
-    console.log("hi");
-
     axiosInstance.get("/api/user").then((resp) => {
         const backendUrl =
             import.meta.env.backendUrl || "http://localhost:8000";

@@ -20,6 +20,12 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
 	fileId, err := utils.ParseIdParam(r.Context())
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -42,10 +48,17 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 	}
 
 	projection := bson.M{
-		"_id": 1,
+		"_id":      1,
+		"owner_id": 1,
 	}
 
-	if _, err = handler.Models.File.Get(filter, projection); err != nil {
+	file, err := handler.Models.File.Get(filter, projection)
+	if file.OwnerId != userObjectId {
+		utils.WriteError(w, http.StatusBadRequest, "only the file owner can create settings(shortUrl) for it")
+		return
+	}
+
+	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -61,7 +74,7 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 	_, err = handler.Models.FileSettings.Get(filter, projection)
 	// If it exists, return error
 	if !errors.Is(err, mongo.ErrNoDocuments) {
-		utils.WriteError(w, http.StatusBadRequest, err)
+		utils.WriteError(w, http.StatusBadRequest, "setting with this filter does not exist")
 		return
 	}
 
@@ -98,12 +111,6 @@ func (handler *Handler) CreateFileSettings(w http.ResponseWriter, r *http.Reques
 	fileShortUrl, err := uuid.NewUUID()
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("failed generating file short url: %s", err))
-		return
-	}
-
-	userObjectId, err := utils.ToObjectID(payload.UserId)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 

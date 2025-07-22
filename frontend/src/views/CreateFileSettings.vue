@@ -162,7 +162,6 @@ const router = useRouter();
 const userStore = useUserStore();
 
 const fileId = route.params.id;
-const folderId = route.params.folderId || route.query.folderId || "";
 const plan = userStore.plan || "free";
 
 if (!fileId) {
@@ -196,11 +195,6 @@ function onSave() {
         formData.append("max_downloads", maxDownloads.value);
     }
 
-    // Add folder_id
-    if (folderId) {
-        formData.append("folder_id", folderId);
-    }
-
     axiosInstance
         .post(`/api/file/settings/create/${fileId}`, formData, {
             headers: { "Content-Type": "multipart/form-data" },
@@ -210,7 +204,7 @@ function onSave() {
             router.push({ name: "sharedUrls" });
         })
         .catch((err) => {
-            showError(err.response.data);
+            showError(err.response.data.error);
         });
 }
 </script>

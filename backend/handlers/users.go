@@ -145,7 +145,7 @@ func (handler *Handler) UploadUserAvatar(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	allowedTypes := []string{"image/jpg", "image/jpeg", "image/png"}
+	allowedTypes := []string{"image/jpg", "image/jpeg", "image/png", "image/webp"}
 
 	file, err := utils.ReadFile(r, maxAvatarSize, allowedTypes)
 	if err != nil {
