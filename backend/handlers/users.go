@@ -2,22 +2,15 @@ package handlers
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"file_manager/utils"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"log/slog"
 	"net/http"
 	"os"
-)
-
-const (
-	GBytes                               = 1024 * 1024 * 1024
-	UserFreePlanMaxStorageBytes    int64 = 2 * GBytes
-	UserPlusPlanMaxStorageBytes    int64 = 100 * GBytes
-	UserPremiumPlanMaxStorageBytes int64 = 1024 * GBytes
 )
 
 func (handler *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
@@ -33,19 +26,21 @@ func (handler *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := handler.Models.User.GetById(userObjectId)
+	filter := bson.M{
+		"_id": userObjectId,
+	}
+
+	user, err := handler.Models.User.Get(filter, bson.M{})
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	data, err := json.MarshalIndent(user, "", "\t")
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
+	response := map[string]interface{}{
+		"avatar_url": user.AvatarUrl,
 	}
 
-	utils.WriteJSON(w, data)
+	utils.WriteJSONData(w, response)
 }
 
 func (handler *Handler) UpdateUserPlan(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +83,7 @@ func (handler *Handler) UpdateUserPlan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) IsUserEligibleToUpload(userId, userPlan string, fileSize int64) (int64, error) {
-	totalStorage, err := getUserTotalStorage(userPlan)
+	totalStorage, err := utils.GetUserTotalStorage(userPlan)
 	if err != nil {
 		return 0, err
 	}
@@ -130,13 +125,21 @@ func (handler *Handler) UploadUserAvatar(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := handler.Models.User.GetById(userObjectId)
+	filter := bson.M{
+		"_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"avatar_url": 1,
+	}
+
+	user, err := handler.Models.User.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	allowedTypes := []string{"image/jpg", "image/jpeg", "image/png"}
+	allowedTypes := []string{"image/jpg", "image/jpeg", "image/png", "image/webp"}
 
 	file, err := utils.ReadFile(r, maxAvatarSize, allowedTypes)
 	if err != nil {
@@ -171,6 +174,75 @@ func (handler *Handler) UploadUserAvatar(w http.ResponseWriter, r *http.Request)
 	utils.WriteJSON(w, "user`s avatar uploaded successfully")
 }
 
+func (handler *Handler) SearchUserContents(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	searchQuery := r.URL.Query().Get("q")
+	if searchQuery == "" {
+		utils.WriteError(w, http.StatusBadRequest, "your search query is empty")
+		return
+	}
+
+	filter := bson.M{
+		"name":     bson.M{"$regex": searchQuery},
+		"owner_id": userObjectId,
+	}
+
+	files, err := handler.Models.File.GetAll(filter, 1, 10)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	shortUrls := map[string]any{}
+
+	for _, file := range files {
+		filter := bson.M{
+			"file_id": file.Id,
+		}
+
+		projection := bson.M{
+			"short_url": 1,
+		}
+
+		setting, err := handler.Models.FileSettings.Get(filter, projection)
+		if err != nil {
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				continue
+			}
+
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		shortUrls[file.Id.Hex()] = setting.ShortUrl
+	}
+
+	folders, err := handler.Models.Folder.GetAll(filter, 1, 10)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	response := map[string]any{
+		"files":     files,
+		"folders":   folders,
+		"shortUrls": shortUrls,
+	}
+	
+	utils.WriteJSONData(w, response)
+}
+
 func (handler *Handler) getUsedStorage(userId string) (int64, error) {
 	if userId == "" {
 		return 0, errors.New("user id is missing")
@@ -181,7 +253,20 @@ func (handler *Handler) getUsedStorage(userId string) (int64, error) {
 		return 0, err
 	}
 
-	return handler.Models.User.GetUsedStorage(userObjectId)
+	filter := bson.M{
+		"_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"total_upload_size": 1,
+	}
+
+	userInstance, err := handler.Models.User.Get(filter, projection)
+	if err != nil {
+		return 0, err
+	}
+
+	return userInstance.TotalUploadSize, nil
 }
 
 func (handler *Handler) DeleteUserAccount(w http.ResponseWriter, r *http.Request) {
@@ -201,7 +286,17 @@ func (handler *Handler) DeleteUserAccount(w http.ResponseWriter, r *http.Request
 		Password string `json:"password"`
 	}
 
-	user, err := handler.Models.User.GetById(userObjectId)
+	filter := bson.M{
+		"_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"hashed_password": 1,
+		"salt":            1,
+		"avatar_url":      1,
+	}
+
+	user, err := handler.Models.User.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -252,35 +347,24 @@ func (handler *Handler) removeUserFilesAndAvatar(userId primitive.ObjectID, user
 		slog.Error("removing user avatar", "error", err)
 	}
 
-	fileAddresses, err := handler.Models.File.GetUserFileAddresses(userId)
+	filter := bson.M{
+		"owner_id": userId,
+	}
+
+	files, err := handler.Models.File.GetAll(filter, 1, 6)
 	if err != nil {
 		slog.Error("retrieving user file addresses", "error", err)
 		return err
 	}
 
-	for _, address := range fileAddresses {
-		if err := os.Remove(address); err != nil {
-			slog.Error(fmt.Sprintf("removing user file: %s", address), "error", err)
+	for _, file := range files {
+		if err := os.Remove(file.Address); err != nil {
+			slog.Error(fmt.Sprintf("removing user file: %s", file.Address), "error", err)
 			continue
 		}
 	}
 
 	return nil
-}
-
-func getUserTotalStorage(plan string) (int64, error) {
-	switch plan {
-	case "free":
-		return UserFreePlanMaxStorageBytes, nil
-	case "plus":
-		return UserPlusPlanMaxStorageBytes, nil
-	case "premium":
-		return UserPremiumPlanMaxStorageBytes, nil
-	case "":
-		return 0, errors.New("plan is missing")
-	default:
-		return 0, fmt.Errorf("invalid plan: %s", plan)
-	}
 }
 
 func getUserAvatarUploadDir(userId string) string {

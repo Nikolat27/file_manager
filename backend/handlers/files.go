@@ -3,11 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"file_manager/database/models"
 	"file_manager/utils"
 	"fmt"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"net/http"
 	"os"
@@ -87,102 +89,65 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := utils.ToObjectID(payload.UserId)
+	teamId := r.URL.Query().Get("team_id")
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
 		return
 	}
 
-	file, err := handler.Models.File.GetAll(userId, pageNumber, pageLimit)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	data, err := json.MarshalIndent(file, "", "\t")
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return
-	}
-	utils.WriteJSON(w, data)
-}
-
-// GetFile -> Returns One
-func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
-	fileShortUrl, err := utils.ParseIdParam(r.Context())
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	var input struct {
-		RawPassword string `json:"password"`
-	}
-
-	// Optionally decode the JSON input for password (only POST requests)
-	if r.Method == "POST" {
-		if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
-			utils.WriteError(w, http.StatusBadRequest, err)
+	var filter bson.M
+	if teamId != "" {
+		teamObjectId, err := utils.ToObjectID(teamId)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
 			return
+		}
+
+		filter = bson.M{
+			"team_id": teamObjectId,
+		}
+	} else {
+		filter = bson.M{
+			"owner_id": userObjectId,
+			"team_id":  primitive.NilObjectID,
 		}
 	}
 
-	fileId, err := handler.Models.FileSettings.GetFileIdByUrl(fileShortUrl)
+	files, err := handler.Models.File.GetAll(filter, pageNumber, pageLimit)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	// Check if the fileShareSetting requires a password. alert if needed.
-	requirePassword, err := handler.Models.FileSettings.IsPasswordRequired(fileId)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
+	shortUrls := map[string]any{}
+
+	for _, file := range files {
+		shortUrls[file.Id.Hex()] = handler.getFileShortUrl(file.Id)
 	}
 
-	if requirePassword && input.RawPassword == "" {
-		utils.WriteError(w, http.StatusBadRequest, errors.New("password required (send password via POST method)"))
-		return
+	response := map[string]any{
+		"files":     files,
+		"shortUrls": shortUrls,
 	}
 
-	fileShareSetting, err := handler.Models.FileSettings.Get(fileId)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	// If password is required and provided, validate it
-	if requirePassword && input.RawPassword != "" {
-		if err := utils.CheckFilePassword([]byte(fileShareSetting.HashedPassword), []byte(fileShareSetting.Salt), []byte(input.RawPassword)); err != nil {
-			utils.WriteError(w, http.StatusBadRequest, err)
-			return
-		}
-	}
-
-	file, err := handler.Models.File.GetOne(fileId)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	// If fileShareSetting`s accessing requires an approval, verify user`s approval status
-	if fileShareSetting.Approvable {
-		if err := checkUserApprovalStatus(r, handler, file.Id, file.OwnerId); err != nil {
-			utils.WriteError(w, http.StatusBadRequest, err)
-			return
-		}
-	}
-
-	resp, err := json.MarshalIndent(&file, "", "\t")
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	utils.WriteJSON(w, resp)
+	utils.WriteJSONData(w, response)
 }
 
 func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("checking auth: %w", err))
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
+		return
+	}
+
 	fileId, err := utils.ParseIdParam(r.Context())
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -195,13 +160,27 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	address, err := handler.Models.File.GetDiskAddressById(fileObjectId)
+	filter := bson.M{
+		"_id": fileObjectId,
+	}
+
+	projection := bson.M{
+		"address":  1,
+		"owner_id": 1,
+	}
+
+	fileInstance, err := handler.Models.File.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	if err := utils.DeleteFileFromDisk(address); err != nil {
+	if fileInstance.OwnerId != userObjectId {
+		utils.WriteError(w, http.StatusBadRequest, "only the file owner can delete it")
+		return
+	}
+
+	if err := utils.DeleteFileFromDisk(fileInstance.Address); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -211,7 +190,11 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.Models.FileSettings.Delete(fileObjectId); err != nil {
+	filter = bson.M{
+		"file_id": fileObjectId,
+	}
+
+	if err := handler.Models.FileSettings.Delete(filter); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -220,6 +203,18 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("checking auth: %w", err))
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
+		return
+	}
+
 	fileId, err := utils.ParseIdParam(r.Context())
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -229,6 +224,25 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 	fileObjectId, err := utils.ToObjectID(fileId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	filter := bson.M{
+		"_id": fileObjectId,
+	}
+
+	projection := bson.M{
+		"owner_id": 1,
+	}
+
+	file, err := handler.Models.File.Get(filter, projection)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if file.OwnerId != userObjectId {
+		utils.WriteError(w, http.StatusBadRequest, "only the file owner can rename it")
 		return
 	}
 
@@ -246,7 +260,11 @@ func (handler *Handler) RenameFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.Models.File.Rename(fileObjectId, []byte(input.Name)); err != nil {
+	updates := bson.M{
+		"name": input.Name,
+	}
+
+	if err := handler.Models.File.Update(fileObjectId, updates); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -286,8 +304,15 @@ func (handler *Handler) SearchFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filter := bson.M{
+		"owner_id": userObjectId,
+		"name": bson.M{
+			"$regex": input.SearchText, "$options": "i", // case insensitive
+		},
+	}
+
 	// Search through files names
-	files, err := handler.Models.File.Search(userObjectId, input.SearchText, input.Page, input.PageLimit)
+	files, err := handler.Models.File.GetAll(filter, input.Page, input.PageLimit)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -303,7 +328,7 @@ func (handler *Handler) SearchFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (handler *Handler) storeUserFile(r *http.Request, maxUploadSize int64, userId, userPlan, uploadDir string) (string, int64, error) {
-	allowedTypes := []string{"image/jpeg", "image/png", "application/zip"}
+	allowedTypes := []string{"image/jpeg", "image/png", "application/zip", "application/pdf"}
 
 	file, err := utils.ReadFile(r, maxUploadSize, allowedTypes)
 	if err != nil {
@@ -325,63 +350,52 @@ func (handler *Handler) storeUserFile(r *http.Request, maxUploadSize int64, user
 	return fileAddress, totalUsedStorage, nil
 }
 
-func getUserUploadDir(userId string) string {
-	return "uploads/user_files/" + userId + "/files/"
-}
-
-func checkUserApprovalStatus(r *http.Request, handler *Handler, fileId, ownerId primitive.ObjectID) error {
-	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
-	if err != nil {
-		return errors.New("this file needs approval, you must be logged in to send your approval")
-	}
-
-	userObjectId, err := utils.ToObjectID(payload.UserId)
-	if err != nil {
-		return err
-	}
-
-	// The owner does not need approval
-	if userObjectId == ownerId {
-		return nil
-	}
-
-	status, err := handler.Models.Approval.CheckStatus(fileId, userObjectId)
-	if err != nil {
-		return err
-	}
-
-	if status == "rejected" {
-		return errors.New("your approval has been rejected by the file owner")
-	}
-
-	if status == "pending" {
-		return errors.New("your approval is in pending status. Please be patient")
-	}
-
-	return nil
-}
-
-// Handle download in front with GetFile func (prefered) due to password required and approable files
 func (handler *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
-	fileShortUrl, err := utils.ParseIdParam(r.Context())
+	shortUrlStr, err := utils.ParseIdParam(r.Context())
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	fileObjectId, err := utils.ToObjectID(fileShortUrl)
+	filter := bson.M{
+		"short_url": shortUrlStr,
+	}
+
+	projection := bson.M{
+		"file_id":                 1,
+		"max_downloads":           1,
+		"current_download_amount": 1,
+	}
+
+	settingInstance, err := handler.Models.FileSettings.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	fileAddress, err := handler.Models.File.GetDiskAddressById(fileObjectId)
+	// -1 means unlimited downloads
+	if settingInstance.MaxDownloads != -1 {
+		if settingInstance.CurrentDownloadAmount+1 > settingInstance.MaxDownloads {
+			utils.WriteError(w, http.StatusBadRequest, "you have exceed you maximum downloads amount")
+			return
+		}
+	}
+
+	filter = bson.M{
+		"_id": settingInstance.FileId,
+	}
+
+	projection = bson.M{
+		"address": 1,
+	}
+
+	fileAddress, err := handler.Models.File.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	file, err := os.Open(string(fileAddress))
+	file, err := os.Open(fileAddress.Address)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -397,5 +411,158 @@ func (handler *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, "download started successfully")
+	updates := bson.M{
+		"current_download_amount": settingInstance.CurrentDownloadAmount + 1,
+	}
+
+	if err := handler.Models.FileSettings.Update(settingInstance.Id, updates); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, "download finished successfully")
+}
+
+func getUserUploadDir(userId string) string {
+	return "uploads/user_files/" + userId + "/files/"
+}
+
+// GetFile -> Returns One
+func (handler *Handler) GetFile(w http.ResponseWriter, r *http.Request) {
+	shortUrl, err := utils.ParseIdParam(r.Context())
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	var providedPassword string
+	if r.Method == "POST" {
+		var input struct {
+			Password string `json:"password"`
+		}
+
+		if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		providedPassword = input.Password
+	}
+
+	filter := bson.M{
+		"short_url": shortUrl,
+	}
+
+	projection := bson.M{
+		"file_id":         1,
+		"approvable":      1,
+		"salt":            1,
+		"hashed_password": 1,
+	}
+
+	fileShareSettings, err := handler.Models.FileSettings.Get(filter, projection)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	filter = bson.M{
+		"_id": fileShareSettings.FileId,
+	}
+
+	projection = bson.M{
+		"owner_id": 1,
+		"address":  1,
+	}
+
+	file, err := handler.Models.File.Get(filter, projection)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	var requesterId primitive.ObjectID
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err == nil {
+		requesterId, _ = utils.ToObjectID(payload.UserId)
+	}
+
+	if err := checkPasswordAccess(file.OwnerId, requesterId, providedPassword, fileShareSettings); err != nil {
+		utils.WriteError(w, http.StatusNotAcceptable, err)
+		return
+	}
+
+	filter = bson.M{
+		"file_id":   fileShareSettings.FileId,
+		"sender_id": requesterId,
+	}
+
+	projection = bson.M{
+		"status": 1,
+	}
+
+	// file owner does not need approval
+	if fileShareSettings.Approvable && file.OwnerId != requesterId {
+
+		approvalInstance, err := handler.Models.Approval.Get(filter, projection)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			utils.WriteError(w, http.StatusPreconditionRequired, "approval required")
+			return
+		}
+
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		if approvalInstance.Status == "rejected" {
+			utils.WriteError(w, http.StatusBadRequest, "Your approval request has been rejected.")
+			return
+		}
+
+		if approvalInstance.Status == "pending" {
+			utils.WriteError(w, http.StatusBadRequest, "Your approval request is in pending. Please be patient")
+			return
+		}
+
+	}
+
+	utils.WriteJSONData(w, map[string]any{"file_address": file.Address})
+	return
+}
+
+func checkPasswordAccess(ownerId, requesterId primitive.ObjectID, rawPassword string, fileSettings *models.FileSettings) error {
+	if ownerId == requesterId || requesterId == primitive.NilObjectID {
+		return nil
+	}
+
+	if fileSettings.HashedPassword == "" {
+		return nil
+	}
+
+	if rawPassword == "" {
+		return errors.New("password is required")
+	}
+
+	return utils.CheckFilePassword(
+		[]byte(fileSettings.HashedPassword),
+		[]byte(fileSettings.Salt),
+		[]byte(rawPassword),
+	)
+}
+
+func (handler *Handler) getFileShortUrl(fileId primitive.ObjectID) string {
+	filter := bson.M{
+		"file_id": fileId,
+	}
+
+	projection := bson.M{
+		"short_url": 1,
+	}
+
+	setting, err := handler.Models.FileSettings.Get(filter, projection)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return ""
+	}
+	return setting.ShortUrl
 }

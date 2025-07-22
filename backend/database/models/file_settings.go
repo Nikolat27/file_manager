@@ -15,21 +15,23 @@ type FileSettingModel struct {
 }
 
 type FileSettings struct {
-	Id             primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	FileId         primitive.ObjectID `json:"file_id" bson:"file_id"`
-	ShortUrl       string             `json:"short_url" bson:"short_url"`
-	Salt           string             `json:"salt" bson:"salt"`
-	HashedPassword string             `json:"hashed_password" bson:"hashed_password"`
-	MaxDownloads   int64              `json:"max_downloads" bson:"max_downloads"`
-	ViewOnly       bool               `json:"view_only" bson:"view_only"`
-	Approvable     bool               `json:"approvable" bson:"approvable"`
-	ExpireAt       time.Time          `json:"expiration_at" bson:"expiration_at"`
-	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
+	Id                    primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	UserId                primitive.ObjectID `json:"user_id" bson:"user_id"`
+	FileId                primitive.ObjectID `json:"file_id" bson:"file_id"` // 1 to 1 relationship
+	ShortUrl              string             `json:"short_url" bson:"short_url"`
+	Salt                  string             `json:"salt" bson:"salt"`
+	HashedPassword        string             `json:"hashed_password" bson:"hashed_password"`
+	MaxDownloads          int64              `json:"max_downloads" bson:"max_downloads"`
+	CurrentDownloadAmount int64              `json:"current_download_amount" bson:"current_download_amount"`
+	ViewOnly              bool               `json:"view_only" bson:"view_only"`
+	Approvable            bool               `json:"approvable" bson:"approvable"`
+	ExpireAt              time.Time          `json:"expiration_at" bson:"expiration_at"`
+	CreatedAt             time.Time          `json:"created_at" bson:"created_at"`
 }
 
 const FileSettingsCollectionName = "file_settings"
 
-func (file *FileSettingModel) Create(fileId primitive.ObjectID, shortUrl, salt, hashedPassword string, maxDownloads int64,
+func (file *FileSettingModel) Create(fileId, userId primitive.ObjectID, shortUrl, salt, hashedPassword string, maxDownloads int64,
 	viewOnly, approvable bool, expireAt time.Time) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -37,6 +39,7 @@ func (file *FileSettingModel) Create(fileId primitive.ObjectID, shortUrl, salt, 
 
 	newFile := &FileSettings{
 		FileId:         fileId,
+		UserId:         userId,
 		ShortUrl:       shortUrl,
 		Salt:           salt,
 		HashedPassword: hashedPassword,
@@ -54,135 +57,72 @@ func (file *FileSettingModel) Create(fileId primitive.ObjectID, shortUrl, salt, 
 	return nil
 }
 
-func (file *FileSettingModel) Get(fileId primitive.ObjectID) (*FileSettings, error) {
+// Get -> Returns one
+func (file *FileSettingModel) Get(filter, projection bson.M) (*FileSettings, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	filter := bson.M{
-		"file_id": fileId,
-	}
-
-	var fileInstance FileSettings
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, errors.New("file with this Id does not exist")
-		}
-
-		return nil, err
-	}
-
-	return &fileInstance, nil
-}
-
-func (file *FileSettingModel) Delete(fileId primitive.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"file_id": fileId,
-	}
-
-	result, err := file.db.Collection("file_settings").DeleteOne(ctx, filter)
-	if err != nil {
-		return err
-	}
-
-	if result.DeletedCount == 0 {
-		return errors.New("setting with this file id does not exist")
-	}
-
-	return nil
-}
-
-func (file *FileSettingModel) GetFileIdByUrl(shortUrl string) (primitive.ObjectID, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"short_url": shortUrl,
-	}
-
-	projection := bson.M{
-		"file_id": 1,
-	}
 
 	findOptions := options.FindOne()
 	findOptions.SetProjection(projection)
 
 	var fileInstance FileSettings
 	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter, findOptions).Decode(&fileInstance); err != nil {
+		return nil, err
+	}
+
+	return &fileInstance, nil
+}
+
+func (file *FileSettingModel) GetAll(filter bson.M) ([]FileSettings, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var settings []FileSettings
+	cursor, err := file.db.Collection(FileSettingsCollectionName).Find(ctx, filter)
+	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return primitive.NilObjectID, errors.New("file with this short url does not exist")
+			return nil, nil
 		}
-
-		return primitive.NilObjectID, err
 	}
 
-	return fileInstance.FileId, nil
+	if err := cursor.All(ctx, &settings); err != nil {
+		return nil, err
+	}
+
+	return settings, nil
 }
 
-func (file *FileSettingModel) IsApprovalRequired(fileId primitive.ObjectID) (bool, error) {
+func (file *FileSettingModel) Delete(filter bson.M) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	filter := bson.M{
-		"file_id": fileId,
+	if _, err := file.db.Collection("file_settings").DeleteOne(ctx, filter); err != nil {
+		return err
 	}
 
-	projection := bson.M{
-		"approvable": 1,
-	}
-
-	fileOptions := options.FindOne()
-	fileOptions.SetProjection(projection)
-
-	var fileInstance FileSettings
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter, fileOptions).Decode(&fileInstance); err != nil {
-		return false, err
-	}
-
-	if fileInstance.Approvable {
-		return true, nil
-	}
-
-	return false, nil
+	return nil
 }
 
-func (file *FileSettingModel) IsPasswordRequired(fileId primitive.ObjectID) (bool, error) {
+func (file *FileSettingModel) Update(id primitive.ObjectID, updates bson.M) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	filter := bson.M{
-		"file_id": fileId,
+	update := bson.M{
+		"$set": updates,
+	}
+	
+	result, err := file.db.Collection(FileSettingsCollectionName).UpdateByID(ctx, id, update)
+	if err != nil {
+		return err
 	}
 
-	var fileInstance FileSettings
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
-		return false, err
+	if result.MatchedCount == 0 {
+		return errors.New("setting with this id does not exist")
 	}
 
-	if fileInstance.HashedPassword == "" {
-		return false, nil
+	if result.ModifiedCount == 0 {
+		return errors.New("no change detected")
 	}
 
-	return true, nil
-}
-
-func (file *FileSettingModel) IsExist(fileId primitive.ObjectID) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	filter := bson.M{
-		"file_id": fileId,
-	}
-
-	var fileInstance FileSettings
-	if err := file.db.Collection(FileSettingsCollectionName).FindOne(ctx, filter).Decode(&fileInstance); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return false, nil
-		}
-		return false, err
-	}
-
-	return true, nil
+	return nil
 }

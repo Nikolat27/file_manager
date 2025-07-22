@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"file_manager/utils"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
@@ -18,7 +19,8 @@ func (handler *Handler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input struct {
-		Name string `json:"name"`
+		TeamId string `json:"team_id"`
+		Name   string `json:"name"`
 	}
 
 	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
@@ -36,7 +38,16 @@ func (handler *Handler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := handler.Models.Folder.Create(userObjectId, input.Name); err != nil {
+	var teamObjectId primitive.ObjectID
+	if input.TeamId != "" {
+		teamObjectId, err = utils.ToObjectID(input.TeamId)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+	}
+
+	if _, err := handler.Models.Folder.Create(userObjectId, teamObjectId, input.Name); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -69,7 +80,18 @@ func (handler *Handler) GetFolderContents(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := handler.Models.Folder.Validate(folderObjectId, userObjectId); err != nil {
+	filter := bson.M{
+		"_id":      folderObjectId,
+		"owner_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"_id":  1,
+		"name": 1,
+	}
+
+	folder, err := handler.Models.Folder.Get(filter, projection)
+	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -80,28 +102,45 @@ func (handler *Handler) GetFolderContents(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	filter = bson.M{
+		"folder_id": folderObjectId,
+	}
+
 	// getting the files
-	files, err := handler.Models.File.GetByFolderId(folderObjectId, page, pageSize)
+	files, err := handler.Models.File.GetAll(filter, page, pageSize)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	data, err := json.MarshalIndent(&files, "", "\t")
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
+	response := map[string]any{
+		"folder_id":   folderId,
+		"folder_name": folder.Name,
+		"files":       files,
 	}
 
-	utils.WriteJSON(w, data)
+	utils.WriteJSONData(w, response)
 }
 
 func (handler *Handler) ValidateFolderId(folderId, userId primitive.ObjectID) error {
 	if folderId == primitive.NilObjectID {
 		return nil
 	}
-	
-	return handler.Models.Folder.Validate(folderId, userId)
+
+	filter := bson.M{
+		"_id":      folderId,
+		"owner_id": userId,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	if _, err := handler.Models.Folder.Get(filter, projection); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (handler *Handler) RenameFolder(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +168,16 @@ func (handler *Handler) RenameFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.Models.Folder.Validate(folderObjectId, userObjectId); err != nil {
+	filter := bson.M{
+		"_id":      folderObjectId,
+		"owner_id": userObjectId,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	if _, err := handler.Models.Folder.Get(filter, projection); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -181,8 +229,23 @@ func (handler *Handler) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.Models.Folder.Validate(folderObjectId, userObjectId); err != nil {
+	filter := bson.M{
+		"_id": folderObjectId,
+	}
+
+	projection := bson.M{
+		"_id":      1,
+		"owner_id": 1,
+	}
+
+	folderInstance, err := handler.Models.Folder.Get(filter, projection)
+	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if folderInstance.OwnerId != userObjectId {
+		utils.WriteError(w, http.StatusBadRequest, "only the folder owner can delete it")
 		return
 	}
 
@@ -207,13 +270,33 @@ func (handler *Handler) GetFoldersList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	teamId := r.URL.Query().Get("team_id")
+
+	var filter bson.M
+	if teamId != "" {
+		teamObjectId, err := utils.ToObjectID(teamId)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
+			return
+		}
+
+		filter = bson.M{
+			"team_id": teamObjectId,
+		}
+	} else {
+		filter = bson.M{
+			"owner_id": userObjectId,
+			"team_id":  primitive.NilObjectID,
+		}
+	}
+
 	page, pageSize, err := utils.GetPaginationParams(r)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	files, err := handler.Models.Folder.GetAll(userObjectId, page, pageSize)
+	files, err := handler.Models.Folder.GetAll(filter, page, pageSize)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return

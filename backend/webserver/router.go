@@ -51,10 +51,11 @@ func (router *AppRouter) registerAuthRoutes(handler *handlers.Handler) {
 
 // registerUserRoutes -> Users
 func (router *AppRouter) registerUserRoutes(handler *handlers.Handler) {
-	router.CoreRouter.HandlerFunc("GET", "/api/user", handler.GetUser)
 	router.CoreRouter.HandlerFunc("DELETE", "/api/user/delete", handler.DeleteUserAccount)
 	router.CoreRouter.HandlerFunc("PUT", "/api/user/plan/change", handler.UpdateUserPlan)
 	router.CoreRouter.HandlerFunc("POST", "/api/user/avatar/upload", handler.UploadUserAvatar)
+	router.CoreRouter.HandlerFunc("GET", "/api/user/search", handler.SearchUserContents)
+	router.CoreRouter.HandlerFunc("GET", "/api/user/get", handler.GetUser)
 }
 
 // registerFileRoutes -> Files
@@ -72,31 +73,38 @@ func (router *AppRouter) registerFileRoutes(handler *handlers.Handler) {
 	router.CoreRouter.HandlerFunc("POST", "/api/file/get/:id", handler.GetFile)
 }
 
+// registerFileSettingsRoutes -> File Settings
+func (router *AppRouter) registerFileSettingsRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)
+	router.CoreRouter.HandlerFunc("GET", "/api/file/settings/get", handler.GetFilesSettings)
+	router.CoreRouter.HandlerFunc("DELETE", "/api/file/settings/delete/:id", handler.DeleteFileSettings)
+}
+
 // registerFileRoutes -> Folder
 func (router *AppRouter) registerFolderRoutes(handler *handlers.Handler) {
-	router.CoreRouter.HandlerFunc("GET", "/api/folder/get", handler.GetFoldersList)
 	router.CoreRouter.HandlerFunc("POST", "/api/folder/create", handler.CreateFolder)
+	router.CoreRouter.HandlerFunc("GET", "/api/folder/get", handler.GetFoldersList)
 	router.CoreRouter.HandlerFunc("GET", "/api/folder/get/:id", handler.GetFolderContents)
 	router.CoreRouter.HandlerFunc("PUT", "/api/folder/rename/:id", handler.RenameFolder)
 	router.CoreRouter.HandlerFunc("DELETE", "/api/folder/delete/:id", handler.DeleteFolder)
 }
 
-// registerFileSettingsRoutes -> File Settings
-func (router *AppRouter) registerFileSettingsRoutes(handler *handlers.Handler) {
-	router.CoreRouter.HandlerFunc("POST", "/api/file/settings/create/:id", handler.CreateFileSettings)
-}
-
 // registerApprovalRoutes -> Approvals
 func (router *AppRouter) registerApprovalRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("GET", "/api/approval/sent/get", handler.GetSendApprovalsList)
+	router.CoreRouter.HandlerFunc("GET", "/api/approval/received/get", handler.GetReceivedApprovalsList)
 	router.CoreRouter.HandlerFunc("POST", "/api/approval/create", handler.CreateApproval)
-	router.CoreRouter.HandlerFunc("PUT", "/api/approval/status", handler.UpdateApproval)
+	router.CoreRouter.HandlerFunc("GET", "/api/approval/check/:id", handler.CheckApproval)
+	router.CoreRouter.HandlerFunc("PUT", "/api/approval/update/status", handler.UpdateApproval)
+	router.CoreRouter.HandlerFunc("DELETE", "/api/approval/delete/:id", handler.DeleteApproval)
 }
 
 // registerTeamRoutes -> Teams
 func (router *AppRouter) registerTeamRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("GET", "/api/team/get", handler.GetTeams)
+	router.CoreRouter.HandlerFunc("GET", "/api/team/get/:id", handler.GetTeam)
 	router.CoreRouter.HandlerFunc("POST", "/api/team/create", handler.CreateTeam)
 	router.CoreRouter.HandlerFunc("POST", "/api/team/file/upload/:id", handler.UploadTeamFile)
-	router.CoreRouter.HandlerFunc("GET", "/api/team/get/:id", handler.GetTeam)
 	router.CoreRouter.HandlerFunc("DELETE", "/api/team/delete/:id", handler.DeleteTeam)
 	router.CoreRouter.HandlerFunc("POST", "/api/team/user/add/:id", handler.AddUserToTeam)
 	router.CoreRouter.HandlerFunc("PUT", "/api/team/plan/update/:id", handler.UpdateTeamPlan)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"file_manager/utils"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 	"time"
@@ -38,18 +39,27 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	encodedHash := hex.EncodeToString(hashedPassword[:])
 	encodedSalt := hex.EncodeToString(salt)
 
-	if _, err = handler.Models.User.GetByUsername(input.Username); err == nil {
+	filter := bson.M{
+		"username": input.Username,
+	}
+
+	projection := bson.M{
+		"_id": 1,
+	}
+
+	if _, err = handler.Models.User.Get(filter, projection); err == nil {
 		utils.WriteError(w, http.StatusBadRequest, errors.New("this username is taken already"))
 		return
 	}
 
-	if !errors.Is(err, mongo.ErrNoDocuments) {
+	// If user does not exist (ErrNoDocuments), Create One
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		if _, err = handler.Models.User.Create(input.Username, DefaultPlan, encodedSalt, encodedHash); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("creating user instance: %w", err))
+			return
+		}
+	} else {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("fetch user: %w", err))
-		return
-	}
-
-	if _, err = handler.Models.User.Create(input.Username, DefaultPlan, encodedSalt, encodedHash); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("creating user instance: %w", err))
 		return
 	}
 
@@ -67,11 +77,25 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := handler.Models.User.GetByUsername(input.Username)
+	filter := bson.M{
+		"username": input.Username,
+	}
+
+	projection := bson.M{
+		"_id":             1,
+		"hashed_password": 1,
+		"salt":            1,
+		"plan":            1,
+		"avatar_url":      1,
+	}
+
+	user, err := handler.Models.User.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("invalid username or password"))
 		return
 	}
+
+	fmt.Println(*user)
 
 	decodedHash, err := hex.DecodeString(user.HashedPassword)
 	if err != nil {
@@ -89,12 +113,20 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusUnauthorized, errors.New("invalid username or password"))
 		return
 	}
-	
-	token, err := handler.PasetoMaker.CreateToken(user.Username, user.Id.Hex(), user.Plan, 24*time.Hour)
+
+	token, err := handler.PasetoMaker.CreateToken(input.Username, user.Id.Hex(), user.Plan, 24*time.Hour)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("error creating token: %w", err))
 		return
 	}
 
-	utils.WriteJSON(w, token)
+	response := map[string]interface{}{
+		"token":      token,
+		"userId":     user.Id.Hex(),
+		"username":   input.Username,
+		"plan":       user.Plan,
+		"avatar_url": user.AvatarUrl,
+	}
+
+	utils.WriteJSONData(w, response)
 }

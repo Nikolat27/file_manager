@@ -17,6 +17,81 @@ const (
 	MegaBytes int64 = 1 << 20
 )
 
+// GetTeams -> Returns List
+func (handler *Handler) GetTeams(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+
+	filter := bson.M{
+		"users": userObjectId,
+	}
+
+	teams, err := handler.Models.Team.GetAll(filter, bson.M{}, 1, 6)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	data, err := json.MarshalIndent(teams, "", "\t")
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, data)
+}
+
+// GetTeam -> Returns One
+func (handler *Handler) GetTeam(w http.ResponseWriter, r *http.Request) {
+	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
+	if err != nil {
+		utils.WriteError(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	userObjectId, err := utils.ToObjectID(payload.UserId)
+
+	teamIdStr, err := utils.ParseIdParam(r.Context())
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	teamObjectId, err := utils.ToObjectID(teamIdStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	filter := bson.M{
+		"_id": teamObjectId,
+	}
+
+	teamInstance, err := handler.Models.Team.Get(filter, bson.M{})
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if !slices.Contains(teamInstance.Users, userObjectId) {
+		utils.WriteError(w, http.StatusBadRequest, "you are not member of this team")
+		return
+	}
+
+	data, err := json.MarshalIndent(teamInstance, "", "\t")
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	utils.WriteJSON(w, data)
+}
+
 func (handler *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
 	if err != nil {
@@ -68,52 +143,15 @@ func (handler *Handler) uploadAvatar(r *http.Request, maxUploadSize int64, teamI
 
 	file, err := utils.ReadFile(r, maxUploadSize, allowedTypes)
 	if err != nil {
+		if errors.Is(err, http.ErrMissingFile) {
+			return "", nil
+		}
+
 		return "", err
 	}
 
 	uploadDir := "uploads/team_files/avatars/" + teamId + "/"
 	return file.UploadToDisk(uploadDir)
-}
-
-func (handler *Handler) GetTeam(w http.ResponseWriter, r *http.Request) {
-	payload, err := utils.CheckAuth(r, handler.PasetoMaker)
-	if err != nil {
-		utils.WriteError(w, http.StatusUnauthorized, err)
-		return
-	}
-
-	userObjectId, err := utils.ToObjectID(payload.UserId)
-
-	teamIdStr, err := utils.ParseIdParam(r.Context())
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	teamObjectId, err := utils.ToObjectID(teamIdStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	teamInstance, err := handler.Models.Team.Get(teamObjectId)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	if !slices.Contains(teamInstance.Users, userObjectId) {
-		utils.WriteError(w, http.StatusBadRequest, "you are not member of this team")
-		return
-	}
-
-	data, err := json.MarshalIndent(teamInstance, "", "\t")
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	utils.WriteJSON(w, data)
 }
 
 func (handler *Handler) UpdateTeamPlan(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +175,15 @@ func (handler *Handler) UpdateTeamPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	teamInstance, err := handler.Models.Team.Get(teamObjectId)
+	filter := bson.M{
+		"_id": teamObjectId,
+	}
+
+	projection := bson.M{
+		"owner_id": 1,
+	}
+
+	teamInstance, err := handler.Models.Team.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -196,7 +242,15 @@ func (handler *Handler) DeleteTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	teamInstance, err := handler.Models.Team.Get(teamObjectId)
+	filter := bson.M{
+		"_id": teamObjectId,
+	}
+
+	projection := bson.M{
+		"owner_id": 1,
+	}
+
+	teamInstance, err := handler.Models.Team.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -232,6 +286,10 @@ func (handler *Handler) AddUserToTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	adminObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
 
 	teamIdStr, err := utils.ParseIdParam(r.Context())
 	if err != nil {
@@ -245,7 +303,16 @@ func (handler *Handler) AddUserToTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	teamInstance, err := handler.Models.Team.Get(teamObjectId)
+	filter := bson.M{
+		"_id": teamObjectId,
+	}
+
+	projection := bson.M{
+		"admins": 1,
+		"users":  1,
+	}
+
+	teamInstance, err := handler.Models.Team.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -256,16 +323,39 @@ func (handler *Handler) AddUserToTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newUserObjectId, err := utils.ToObjectID(input.UserId)
+	userObjectId, err := utils.ToObjectID(input.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
 
-	if err := handler.Models.User.CheckExist(newUserObjectId); err != nil {
+	filter = bson.M{
+		"_id": userObjectId,
+	}
+
+	projection = bson.M{
+		"_id": 1,
+	}
+
+	if _, err := handler.Models.User.Get(filter, projection); err != nil {
 		utils.WriteError(w, http.StatusNotFound, err)
+		return
+	}
+
+	if slices.Contains(teamInstance.Users, userObjectId) {
+		utils.WriteError(w, http.StatusBadRequest, "This user is already in the team")
 		return
 	}
 
 	// adding the new user
 	currentUsers := teamInstance.Users
-	currentUsers = append(currentUsers, newUserObjectId)
+	if err := canAddUser(len(currentUsers), teamInstance.Plan); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// users updated
+	currentUsers = append(currentUsers, userObjectId)
 
 	updates := bson.M{
 		"users":      currentUsers,
@@ -299,7 +389,16 @@ func (handler *Handler) UploadTeamFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	teamInstance, err := handler.Models.Team.Get(teamObjectId)
+	filter := bson.M{
+		"_id": teamObjectId,
+	}
+
+	projection := bson.M{
+		"plan":         1,
+		"storage_used": 1,
+	}
+
+	teamInstance, err := handler.Models.Team.Get(filter, projection)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -333,7 +432,7 @@ func (handler *Handler) UploadTeamFile(w http.ResponseWriter, r *http.Request) {
 
 	uploadDir := utils.GetTeamUploadDir(teamIdStr)
 
-	fileAddress, totalUploadSize, err := handler.storeTeamFile(r, maxUploadSize, teamIdStr, teamInstance.Plan, uploadDir)
+	fileAddress, totalUploadSize, err := handler.storeTeamFile(r, maxUploadSize, teamInstance.StorageUsed, teamInstance.Plan, uploadDir)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -359,7 +458,7 @@ func (handler *Handler) UploadTeamFile(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, "file uploaded successfully")
 }
 
-func (handler *Handler) storeTeamFile(r *http.Request, maxUploadSize int64, id, plan, uploadDir string) (string, int64, error) {
+func (handler *Handler) storeTeamFile(r *http.Request, maxUploadSize, totalUsedStorage int64, plan, uploadDir string) (string, int64, error) {
 	allowedTypes := []string{"image/jpeg", "image/png", "application/zip"}
 
 	file, err := utils.ReadFile(r, maxUploadSize, allowedTypes)
@@ -369,7 +468,7 @@ func (handler *Handler) storeTeamFile(r *http.Request, maxUploadSize int64, id, 
 
 	defer file.File.Close()
 
-	totalUsedStorage, err := handler.isTeamEligibleToUpload(id, plan, file.Size)
+	newTotalStorage, err := handler.isTeamEligibleToUpload(plan, totalUsedStorage, file.Size)
 	if err != nil {
 		return "", 0, err
 	}
@@ -379,10 +478,10 @@ func (handler *Handler) storeTeamFile(r *http.Request, maxUploadSize int64, id, 
 		return "", 0, err
 	}
 
-	return fileAddress, file.Size + totalUsedStorage, nil
+	return fileAddress, file.Size + newTotalStorage, nil
 }
 
-func (handler *Handler) isTeamEligibleToUpload(id, plan string, fileSize int64) (int64, error) {
+func (handler *Handler) isTeamEligibleToUpload(plan string, usedStorage, fileSize int64) (int64, error) {
 	totalStorage, err := utils.GetTeamTotalStorage(plan)
 	if err != nil {
 		return 0, err
@@ -390,11 +489,6 @@ func (handler *Handler) isTeamEligibleToUpload(id, plan string, fileSize int64) 
 
 	if fileSize > totalStorage {
 		return 0, fmt.Errorf("your file size (%d bytes) exceeds your plan's total storage limit (%d bytes)", fileSize, totalStorage)
-	}
-
-	usedStorage, err := handler.getTeamUsedStorage(id)
-	if err != nil {
-		return 0, fmt.Errorf("failed to check used storage: %w", err)
 	}
 
 	remainedStorage := totalStorage - usedStorage
@@ -406,15 +500,15 @@ func (handler *Handler) isTeamEligibleToUpload(id, plan string, fileSize int64) 
 	return newTotalStorage, nil
 }
 
-func (handler *Handler) getTeamUsedStorage(id string) (int64, error) {
-	if id == "" {
-		return 0, errors.New("user id is missing")
+func canAddUser(currentUsersAmount int, teamPlan string) error {
+	totalAllowedUsers := utils.GetTeamTotalUsers(teamPlan)
+	if totalAllowedUsers == -1 {
+		return nil
 	}
 
-	userObjectId, err := utils.ToObjectID(id)
-	if err != nil {
-		return 0, err
+	if currentUsersAmount+1 < totalAllowedUsers {
+		return nil
 	}
 
-	return handler.Models.Team.GetUsedStorage(userObjectId)
+	return fmt.Errorf("you have exceed you total user adding limitation. For free plan is :%d", totalAllowedUsers)
 }
