@@ -105,8 +105,6 @@ import { ref } from "vue";
 import axiosInstance from "../axiosInstance";
 import { useUserStore } from "../stores/user";
 
-import testAvatarPic from "../assets/images.png";
-
 const userStore = useUserStore();
 
 const showAvatarModal = ref(false);

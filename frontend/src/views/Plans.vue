@@ -67,21 +67,13 @@
             </div>
         </div>
 
-        <!-- Upgrade Plan Button -->
-        <button
-            @click="openUpgradeModal"
-            class="mt-10 bg-blue-700 hover:bg-blue-800 text-white font-bold px-8 py-3 rounded-2xl shadow transition"
-        >
-            Upgrade Plan
-        </button>
-
         <!-- Upgrade Plan Modal -->
         <div
             v-if="showUpgradeModal"
             class="fixed inset-0 z-50 bg-black bg-opacity-30 flex items-center justify-center"
         >
             <div
-                class="bg-white rounded-2xl shadow-xl p-8 min-w-[340px] flex flex-col gap-4 relative"
+                class="bg-white rounded-2xl shadow-xl p-8 min-w-[360px] flex flex-col gap-4 relative"
             >
                 <button
                     class="absolute top-2 right-3 text-2xl text-gray-400 hover:text-gray-600"
@@ -103,10 +95,7 @@
                                 : 'bg-gray-200 text-gray-800'
                         "
                         class="rounded-xl px-4 py-2 font-semibold transition"
-                        @click="
-                            upgradeType = 'user';
-                            selectedPlan = '';
-                        "
+                        @click="selectUpgradeType('user')"
                     >
                         User
                     </button>
@@ -117,10 +106,7 @@
                                 : 'bg-gray-200 text-gray-800'
                         "
                         class="rounded-xl px-4 py-2 font-semibold transition"
-                        @click="
-                            upgradeType = 'team';
-                            selectedPlan = '';
-                        "
+                        @click="selectUpgradeType('team')"
                     >
                         Team
                     </button>
@@ -165,19 +151,59 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Step 3: Choose Team if team upgrade -->
+                <div v-if="upgradeType === 'team' && selectedPlan" class="mb-3">
+                    <label class="font-semibold mb-2">Select Your Team:</label>
+                    <div v-if="teamLoading" class="text-gray-500">
+                        Loading teams...
+                    </div>
+                    <div v-else-if="teamList.length === 0" class="text-red-400">
+                        No teams found
+                    </div>
+                    <div v-else class="flex flex-col gap-1">
+                        <label
+                            v-for="team in teamList"
+                            :key="team.id"
+                            class="flex items-center gap-2 cursor-pointer"
+                        >
+                            <input
+                                type="radio"
+                                name="selectedTeam"
+                                :value="team.id"
+                                v-model="selectedTeam"
+                                class="accent-blue-600"
+                            />
+                            <span>{{ team.name }}</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Apply Button (always last step) -->
+                <button
+                    class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 py-2 rounded-xl mt-2 disabled:opacity-60"
+                    :disabled="!canApply || isUpgrading"
+                    @click="upgradePlan"
+                >
+                    <span v-if="!isUpgrading">Apply</span>
+                    <span v-else>Applying...</span>
+                </button>
             </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import axiosInstance from "../axiosInstance";
 import { showSuccess, showError } from "../utils/toast";
+import { useUserStore } from "../stores/user";
+
+const userStore = useUserStore();
 
 const userPlans = [
     {
-        name: "Free",
+        name: "free",
         storage: "2 GB",
         maxFileSize: "100 MB",
         maxFiles: "1,000",
@@ -186,7 +212,7 @@ const userPlans = [
         features: "Basic file upload/download, basic sharing",
     },
     {
-        name: "Plus",
+        name: "plus",
         storage: "100 GB",
         maxFileSize: "2 GB",
         maxFiles: "Unlimited",
@@ -195,7 +221,7 @@ const userPlans = [
         features: "Password-protected sharing, advanced sharing",
     },
     {
-        name: "Premium",
+        name: "premium",
         storage: "1 TB",
         maxFileSize: "10 GB",
         maxFiles: "Unlimited",
@@ -207,7 +233,7 @@ const userPlans = [
 
 const teamPlans = [
     {
-        name: "Free",
+        name: "free",
         storage: "10 GB",
         maxFileSize: "100 MB",
         maxMembers: "5",
@@ -216,7 +242,7 @@ const teamPlans = [
         features: "Basic collaboration, file sharing, team chat",
     },
     {
-        name: "Premium",
+        name: "premium",
         storage: "1 TB",
         maxFileSize: "10 GB",
         maxMembers: "Unlimited",
@@ -227,16 +253,31 @@ const teamPlans = [
     },
 ];
 
-// --- Upgrade modal logic ---
+// Modal state
 const showUpgradeModal = ref(false);
 const upgradeType = ref(""); // "user" or "team"
 const selectedPlan = ref("");
 const isUpgrading = ref(false);
 
+// For team selection
+const teamList = ref([]);
+const teamLoading = ref(false);
+const selectedTeam = ref("");
+
+// When to enable Apply button
+const canApply = computed(() =>
+    upgradeType.value === "user"
+        ? !!selectedPlan.value
+        : !!selectedPlan.value && !!selectedTeam.value
+);
+
+// Modal logic
 function openUpgradeModal() {
     upgradeType.value = "";
     selectedPlan.value = "";
     showUpgradeModal.value = true;
+    teamList.value = [];
+    selectedTeam.value = "";
 }
 
 function closeUpgradeModal() {
@@ -244,20 +285,50 @@ function closeUpgradeModal() {
     upgradeType.value = "";
     selectedPlan.value = "";
     isUpgrading.value = false;
+    teamList.value = [];
+    selectedTeam.value = "";
 }
 
+// Handle type selection and fetch team list if needed
+async function selectUpgradeType(type) {
+    upgradeType.value = type;
+    selectedPlan.value = "";
+    if (type === "team") {
+        teamLoading.value = true;
+        selectedTeam.value = "";
+        try {
+            const resp = await axiosInstance.get("/api/team/get");
+            teamList.value = resp.data || [];
+        } catch (e) {
+            teamList.value = [];
+            showError("Failed to load teams");
+        }
+        teamLoading.value = false;
+    }
+}
+
+// Apply/Upgrade action
 async function upgradePlan() {
-    if (!upgradeType.value || !selectedPlan.value) {
-        showError("Please select type and plan.");
+    if (!canApply.value) {
+        showError("Please fill all fields.");
         return;
     }
     isUpgrading.value = true;
     try {
-        // Example POST request to your API
-        await axiosInstance.post("/api/upgrade-plan", {
-            type: upgradeType.value,
-            plan: selectedPlan.value,
-        });
+        if (upgradeType.value === "user") {
+            await axiosInstance.put("/api/user/plan/change", {
+                plan: selectedPlan.value,
+            });
+
+            userStore.plan = selectedPlan.value;
+        } else if (upgradeType.value === "team") {
+            await axiosInstance.put(
+                `/api/team/plan/update/${selectedTeam.value}`,
+                {
+                    plan: selectedPlan.value,
+                }
+            );
+        }
         showSuccess("Plan upgrade requested!");
         closeUpgradeModal();
     } catch (err) {

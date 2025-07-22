@@ -97,7 +97,6 @@ function fetchUserTeams() {
         .get("/api/team/get")
         .then((resp) => {
             teams.value = resp.data;
-            console.log(resp.data);
         })
         .catch((err) => {
             console.error(err);
@@ -145,7 +144,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Optional: subtle hover effect */
 div[role="team-row"]:hover {
     box-shadow: 0 2px 16px 0 rgba(0, 0, 0, 0.08);
     background: #f6f8fc;
