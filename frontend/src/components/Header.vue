@@ -35,7 +35,7 @@
             >
                 <img
                     class="w-full h-full"
-                    :src="userStore.avatarUrl || '../assets/images.png'"
+                    :src="userStore.avatarUrl || testAvatarPic"
                     alt=""
                 />
             </button>
@@ -49,6 +49,10 @@
         <div
             class="bg-black text-white rounded-xl p-8 flex flex-col items-center gap-4 w-[90vw] max-w-md shadow-2xl"
         >
+            <span class="font-semibold"
+                >Your user id:
+                <span class="underline">{{ userStore.id }}</span></span
+            >
             <h2 class="text-xl font-semibold mb-2">Change Profile Avatar</h2>
 
             <!-- Avatar Image Preview -->
@@ -100,6 +104,8 @@ import { showError, showSuccess } from "../utils/toast";
 import { ref } from "vue";
 import axiosInstance from "../axiosInstance";
 import { useUserStore } from "../stores/user";
+
+import testAvatarPic from "../assets/images.png";
 
 const userStore = useUserStore();
 

@@ -11,6 +11,7 @@ import SentApprovals from "../views/SentApprovals.vue";
 import ReceivedApprovals from "../views/ReceivedApprovals.vue";
 import TeamsView from "../views/Teams.vue";
 import TeamFilesView from "../views/TeamFiles.vue";
+import PlansView from "../views/Plans.vue";
 
 const routes = [
     { path: "/", redirect: "/home" },
@@ -66,6 +67,11 @@ const routes = [
         path: "/teams/:id",
         name: "TeamFiles",
         component: TeamFilesView,
+    },
+    {
+        path: "/plans",
+        name: "plans",
+        component: PlansView,
     },
 ];
 

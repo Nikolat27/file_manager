@@ -417,6 +417,9 @@ import { ref, onMounted, watch, reactive } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axiosInstance from "../axiosInstance";
 import { showError, showSuccess } from "../utils/toast";
+import { useUserStore } from "../stores/user";
+
+const userStore = useUserStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -448,6 +451,17 @@ const customFileName = ref("");
 watch([showUploadFileModal, showUploadFileToFolderModal], ([valA, valB]) => {
     if (!valA && !valB) customFileName.value = "";
 });
+
+function deleteTeam(teamId) {
+    axiosInstance
+        .delete(`/api/team/delete/${teamId}`)
+        .then(() => {
+            showSuccess("deleted team successfully");
+        })
+        .catch((err) => {
+            showError(err.response.data.error);
+        });
+}
 
 async function addUser() {
     if (!newUserId.value) {

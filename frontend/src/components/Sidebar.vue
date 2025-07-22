@@ -101,6 +101,17 @@
             >
                 <span class="text-[14px] font-medium">Teams</span>
             </div>
+            <div
+                @click="goToPlans"
+                :class="[
+                    'w-[196px] h-[36px] rounded-xl hover:cursor-pointer flex justify-start items-center pl-4',
+                    route.name === 'plans'
+                        ? 'bg-black text-white'
+                        : 'bg-[#f7f5f2] text-black hover:bg-[#ebe9e6]',
+                ]"
+            >
+                <span class="text-[14px] font-medium">Plans</span>
+            </div>
         </div>
     </aside>
 </template>
@@ -136,5 +147,9 @@ function goToReceivedApprovals() {
 
 function goToTeams() {
     router.push({ name: "teams" });
+}
+
+function goToPlans() {
+    router.push({ name: "plans" });
 }
 </script>

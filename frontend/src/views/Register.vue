@@ -32,6 +32,11 @@
             >
                 Register
             </button>
+            <span
+                @click="goToLogin"
+                class="cursor-pointer text-blue-500 underline"
+                >login</span
+            >
         </form>
     </div>
 </template>
@@ -39,7 +44,7 @@
 <script setup>
 import { ref } from "vue";
 import axiosInstance from "../axiosInstance";
-import { showSuccess } from "../utils/toast";
+import { showError, showSuccess } from "../utils/toast";
 import { useRouter } from "vue-router";
 
 const username = ref("");
@@ -66,7 +71,13 @@ async function register() {
             showSuccess("User registered successfully");
             router.push({ name: "login" });
         })
-        .catch((err) => console.error(err));
+        .catch((err) => {
+            showError(err.response.data.error);
+        });
+}
+
+function goToLogin() {
+    router.push({ name: "login" });
 }
 
 function onRegister() {

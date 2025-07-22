@@ -52,12 +52,21 @@
                 </div>
             </div>
 
-            <div class="flex flex-col justify-between items-end ml-4 h-full">
+            <div
+                class="flex flex-row gap-2 justify-between items-end ml-4 h-full"
+            >
                 <button
                     @click="goToTeamFiles(team.id)"
                     class="cursor-pointer px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700"
                 >
                     View
+                </button>
+                <button
+                    v-if="team.owner_id === userStore.id"
+                    @click="deleteTeam(team.id)"
+                    class="cursor-pointer px-4 py-2 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700"
+                >
+                    Delete
                 </button>
             </div>
         </div>
@@ -68,6 +77,11 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import axiosInstance from "../axiosInstance";
+import { useUserStore } from "../stores/user";
+import { showSuccess, showError } from "../utils/toast";
+import defaultAvatar from "../assets/images/Avatar-16-512.webp";
+
+const userStore = useUserStore();
 
 const router = useRouter();
 
@@ -78,8 +92,6 @@ function goToTeamFiles(teamId) {
 // Sample data (replace with API call in real usage)
 const teams = ref([]);
 
-const defaultAvatar = "https://ui-avatars.com/api/?name=Team&background=random";
-
 function fetchUserTeams() {
     axiosInstance
         .get("/api/team/get")
@@ -89,6 +101,17 @@ function fetchUserTeams() {
         })
         .catch((err) => {
             console.error(err);
+        });
+}
+
+function deleteTeam(teamId) {
+    axiosInstance
+        .delete(`/api/team/delete/${teamId}`)
+        .then(() => {
+            showSuccess("deleted team successfully");
+        })
+        .catch((err) => {
+            showError(err.response.data.error);
         });
 }
 
@@ -106,6 +129,10 @@ function formatDate(dateStr) {
 }
 
 function getTeamAvatarUrl(avatarUrl) {
+    if (!avatarUrl) {
+        return null;
+    }
+
     const backendUrl = import.meta.env.backendUrl || "http://localhost:8000";
     const staticUrl = backendUrl + "/static/";
 

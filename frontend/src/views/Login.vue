@@ -25,6 +25,11 @@
             >
                 Login
             </button>
+            <span
+                @click="goToRegister"
+                class="cursor-pointer text-blue-500 underline"
+                >register</span
+            >
         </form>
     </div>
 </template>
@@ -42,6 +47,10 @@ const password = ref("");
 const router = useRouter();
 
 const userStore = useUserStore();
+
+function goToRegister() {
+    router.push({ name: "register" });
+}
 
 async function login() {
     const payload = {
@@ -65,7 +74,7 @@ async function login() {
             const avatarUrl = staticUrl + resp.data.avatar_url;
 
             userStore.setUser({
-                id: resp.data.id,
+                id: resp.data.userId,
                 username: resp.data.username,
                 plan: resp.data.plan,
                 token: resp.data.token,
@@ -76,7 +85,7 @@ async function login() {
             router.push({ name: "home" });
         })
         .catch((err) => {
-            showError(err.response.data);
+            showError(err.response.data.error);
         });
 }
 
