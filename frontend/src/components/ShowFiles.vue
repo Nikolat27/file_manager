@@ -58,7 +58,7 @@
                         >
                     </td>
                 </tr>
-                <tr v-for="file in files" :key="'file-' + file.id">
+                <tr v-for="file in files" :key="file?.id">
                     <td class="px-4 py-2 flex flex-row items-center gap-x-2">
                         <span title="file">
                             <!-- FILE ICON SVG -->
@@ -79,11 +79,15 @@
                                 />
                             </svg>
                         </span>
-                        {{ file.name }}
+                        {{ file?.name }}
                     </td>
-                    <td class="px-4 py-2">{{ formatDate(file.created_at) }}</td>
                     <td class="px-4 py-2">
-                        {{ file.expire_at ? formatDate(file.expire_at) : "-" }}
+                        {{ formatDate(file?.created_at) }}
+                    </td>
+                    <td class="px-4 py-2">
+                        {{
+                            file?.expire_at ? formatDate(file?.expire_at) : "-"
+                        }}
                     </td>
                     <td
                         class="relative px-4 py-2 text-xl font-semibold cursor-pointer select-none pl-8 pb-4"
@@ -139,12 +143,6 @@
                         class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
                     >
                         Create Short Url
-                    </button>
-                    <button
-                        @click="downloadFile()"
-                        class="w-full border-white border-2 px-4 py-2 rounded-xl text-white text-lg font-semibold hover:bg-blue-700 transition cursor-pointer"
-                    >
-                        Download
                     </button>
                     <button
                         @click="openRenameFileModal"
@@ -315,35 +313,6 @@ function openUploadFileModal() {
     showModal.value = false;
 }
 
-async function downloadFile() {
-    try {
-        const fileId = currentItem.value.id;
-        const res = await axiosInstance.get(`/api/file/download/${fileId}`, {
-            responseType: "blob",
-        });
-
-        // Get extension from content-type (e.g., "image/png" → "png", "application/pdf" → "pdf")
-        let ext =
-            res.headers["content-type"]?.split("/")[1]?.split(";")[0] || "bin";
-        const filename = `${fileId}.${ext}`;
-
-        const url = URL.createObjectURL(res.data);
-        const link = Object.assign(document.createElement("a"), {
-            href: url,
-            download: filename,
-        });
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-
-        showSuccess("Download started");
-        closeModal();
-    } catch {
-        showError("Download failed");
-    }
-}
-
 function uploadFileToFolder() {
     const fileInputEl = uploadFileInput.value;
     if (!fileInputEl || !fileInputEl.files.length) return;
@@ -463,7 +432,7 @@ function formatDate(dateStr) {
 
 function getFiles() {
     axiosInstance.get("/api/file/get").then((resp) => {
-        files.value = resp.data;
+        files.value = resp.data.files;
     });
 }
 

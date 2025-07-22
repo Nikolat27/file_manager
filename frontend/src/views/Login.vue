@@ -71,7 +71,12 @@ async function login() {
                 import.meta.env.backendUrl || "http://localhost:8000";
 
             const staticUrl = backendUrl + "/static/";
-            const avatarUrl = staticUrl + resp.data.avatar_url;
+            let avatarUrl = staticUrl + resp.data.avatar_url;
+
+            if (!resp.data.avatar_url) {
+                avatarUrl = null;
+            }
+            console.log(avatarUrl);
 
             userStore.setUser({
                 id: resp.data.userId,

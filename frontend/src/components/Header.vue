@@ -35,7 +35,7 @@
             >
                 <img
                     class="w-full h-full"
-                    :src="userStore.avatarUrl || testAvatarPic"
+                    :src="userStore.avatarUrl || defaultAvatarUrl"
                     alt=""
                 />
             </button>
@@ -104,6 +104,7 @@ import { showError, showSuccess } from "../utils/toast";
 import { ref } from "vue";
 import axiosInstance from "../axiosInstance";
 import { useUserStore } from "../stores/user";
+import defaultAvatarUrl from "../assets/images/images.png";
 
 const userStore = useUserStore();
 
@@ -167,7 +168,10 @@ async function getUserData() {
             import.meta.env.backendUrl || "http://localhost:8000";
 
         const staticUrl = backendUrl + "/static/";
-        const avatarUrl = staticUrl + resp.data.avatar_url;
+        let avatarUrl = staticUrl + resp.data.avatar_url;
+        if (resp.data.avatarUrl) {
+            avatarUrl = null;
+        }
 
         // only update the avatar url
         userStore.avatarUrl = avatarUrl;

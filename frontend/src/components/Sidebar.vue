@@ -29,12 +29,7 @@
                 @click="handleLogout"
                 class="w-10 h-10 rounded-xl bg-[#ebe9e6] flex items-center justify-center hover:cursor-pointer hover:bg-[#d5d3d1]"
             >
-                <img
-                    width="25px"
-                    height="25px"
-                    src="../assets/icons8-logout-64.png"
-                    alt=""
-                />
+                <img width="25px" height="25px" :src="logoutIcon" alt="" />
             </button>
             <span class="text-[13px]">Logout</span>
             <span class="text-[13px] underline">{{ userStore.username }}</span>
@@ -118,6 +113,8 @@
 <script setup>
 import { useUserStore } from "../stores/user";
 import { useRoute, useRouter } from "vue-router";
+
+import logoutIcon from "../assets/images/icons8-logout-64.png";
 
 const userStore = useUserStore();
 
