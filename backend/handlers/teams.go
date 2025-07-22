@@ -36,8 +36,6 @@ func (handler *Handler) GetTeams(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(teams)
-
 	data, err := json.MarshalIndent(teams, "", "\t")
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -283,6 +281,10 @@ func (handler *Handler) AddUserToTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	adminObjectId, err := utils.ToObjectID(payload.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
 
 	teamIdStr, err := utils.ParseIdParam(r.Context())
 	if err != nil {
@@ -317,6 +319,10 @@ func (handler *Handler) AddUserToTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userObjectId, err := utils.ToObjectID(input.UserId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
 
 	filter = bson.M{
 		"_id": userObjectId,
@@ -328,6 +334,11 @@ func (handler *Handler) AddUserToTeam(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := handler.Models.User.Get(filter, projection); err != nil {
 		utils.WriteError(w, http.StatusNotFound, err)
+		return
+	}
+
+	if slices.Contains(teamInstance.Users, userObjectId) {
+		utils.WriteError(w, http.StatusBadRequest, "This user is already in the team")
 		return
 	}
 
