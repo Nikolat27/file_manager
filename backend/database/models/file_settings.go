@@ -15,17 +15,18 @@ type FileSettingModel struct {
 }
 
 type FileSettings struct {
-	Id             primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	UserId         primitive.ObjectID `json:"user_id" bson:"user_id"`
-	FileId         primitive.ObjectID `json:"file_id" bson:"file_id"` // 1 to 1 relationship
-	ShortUrl       string             `json:"short_url" bson:"short_url"`
-	Salt           string             `json:"salt" bson:"salt"`
-	HashedPassword string             `json:"hashed_password" bson:"hashed_password"`
-	MaxDownloads   int64              `json:"max_downloads" bson:"max_downloads"`
-	ViewOnly       bool               `json:"view_only" bson:"view_only"`
-	Approvable     bool               `json:"approvable" bson:"approvable"`
-	ExpireAt       time.Time          `json:"expiration_at" bson:"expiration_at"`
-	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
+	Id                    primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	UserId                primitive.ObjectID `json:"user_id" bson:"user_id"`
+	FileId                primitive.ObjectID `json:"file_id" bson:"file_id"` // 1 to 1 relationship
+	ShortUrl              string             `json:"short_url" bson:"short_url"`
+	Salt                  string             `json:"salt" bson:"salt"`
+	HashedPassword        string             `json:"hashed_password" bson:"hashed_password"`
+	MaxDownloads          int64              `json:"max_downloads" bson:"max_downloads"`
+	CurrentDownloadAmount int64              `json:"current_download_amount" bson:"current_download_amount"`
+	ViewOnly              bool               `json:"view_only" bson:"view_only"`
+	Approvable            bool               `json:"approvable" bson:"approvable"`
+	ExpireAt              time.Time          `json:"expiration_at" bson:"expiration_at"`
+	CreatedAt             time.Time          `json:"created_at" bson:"created_at"`
 }
 
 const FileSettingsCollectionName = "file_settings"
@@ -97,6 +98,30 @@ func (file *FileSettingModel) Delete(filter bson.M) error {
 
 	if _, err := file.db.Collection("file_settings").DeleteOne(ctx, filter); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (file *FileSettingModel) Update(id primitive.ObjectID, updates bson.M) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	update := bson.M{
+		"$set": updates,
+	}
+	
+	result, err := file.db.Collection(FileSettingsCollectionName).UpdateByID(ctx, id, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return errors.New("setting with this id does not exist")
+	}
+
+	if result.ModifiedCount == 0 {
+		return errors.New("no change detected")
 	}
 
 	return nil
