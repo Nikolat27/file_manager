@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"file_manager/utils"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
@@ -18,7 +19,8 @@ func (handler *Handler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input struct {
-		Name string `json:"name"`
+		TeamId string `json:"team_id"`
+		Name   string `json:"name"`
 	}
 
 	if err := utils.ParseJSON(r.Body, 1000, &input); err != nil {
@@ -36,7 +38,16 @@ func (handler *Handler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := handler.Models.Folder.Create(userObjectId, input.Name); err != nil {
+	var teamObjectId primitive.ObjectID
+	if input.TeamId != "" {
+		teamObjectId, err = utils.ToObjectID(input.TeamId)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+	}
+
+	if _, err := handler.Models.Folder.Create(userObjectId, teamObjectId, input.Name); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -253,13 +264,34 @@ func (handler *Handler) GetFoldersList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	teamId := r.URL.Query().Get("team_id")
+
+	var filter bson.M
+	if teamId != "" {
+		teamObjectId, err := utils.ToObjectID(teamId)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
+			return
+		}
+
+		filter = bson.M{
+			"owner_id": userObjectId,
+			"team_id":  teamObjectId,
+		}
+	} else {
+		filter = bson.M{
+			"owner_id": userObjectId,
+			"team_id":  primitive.NilObjectID,
+		}
+	}
+
 	page, pageSize, err := utils.GetPaginationParams(r)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	files, err := handler.Models.Folder.GetAll(userObjectId, page, pageSize)
+	files, err := handler.Models.Folder.GetAll(filter, page, pageSize)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
