@@ -89,14 +89,31 @@ func (handler *Handler) GetFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	teamId := r.URL.Query().Get("team_id")
+
 	userObjectId, err := utils.ToObjectID(payload.UserId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
 		return
 	}
 
-	filter := bson.M{
-		"owner_id": userObjectId,
+	var filter bson.M
+	if teamId != "" {
+		teamObjectId, err := utils.ToObjectID(teamId)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user id: %w", err))
+			return
+		}
+
+		filter = bson.M{
+			"owner_id": userObjectId,
+			"team_id":  teamObjectId,
+		}
+	} else {
+		filter = bson.M{
+			"owner_id": userObjectId,
+			"team_id":  primitive.NilObjectID,
+		}
 	}
 
 	file, err := handler.Models.File.GetAll(filter, pageNumber, pageLimit)
