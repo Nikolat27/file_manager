@@ -452,17 +452,6 @@ watch([showUploadFileModal, showUploadFileToFolderModal], ([valA, valB]) => {
     if (!valA && !valB) customFileName.value = "";
 });
 
-function deleteTeam(teamId) {
-    axiosInstance
-        .delete(`/api/team/delete/${teamId}`)
-        .then(() => {
-            showSuccess("deleted team successfully");
-        })
-        .catch((err) => {
-            showError(err.response.data.error);
-        });
-}
-
 async function addUser() {
     if (!newUserId.value) {
         errorMsg.value = "User ID cannot be empty";
@@ -540,7 +529,7 @@ async function uploadFile() {
     formData.append("file", file);
     formData.append("team_id", route.params.id);
     if (customFileName.value.trim()) {
-        formData.append("file_name", customFileName.value.trim());
+        formData.append("name", customFileName.value.trim());
     }
 
     try {
