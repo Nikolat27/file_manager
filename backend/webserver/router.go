@@ -100,9 +100,10 @@ func (router *AppRouter) registerApprovalRoutes(handler *handlers.Handler) {
 
 // registerTeamRoutes -> Teams
 func (router *AppRouter) registerTeamRoutes(handler *handlers.Handler) {
+	router.CoreRouter.HandlerFunc("GET", "/api/team/get", handler.GetTeams)
+	router.CoreRouter.HandlerFunc("GET", "/api/team/get/:id", handler.GetTeam)
 	router.CoreRouter.HandlerFunc("POST", "/api/team/create", handler.CreateTeam)
 	router.CoreRouter.HandlerFunc("POST", "/api/team/file/upload/:id", handler.UploadTeamFile)
-	router.CoreRouter.HandlerFunc("GET", "/api/team/get/:id", handler.GetTeam)
 	router.CoreRouter.HandlerFunc("DELETE", "/api/team/delete/:id", handler.DeleteTeam)
 	router.CoreRouter.HandlerFunc("POST", "/api/team/user/add/:id", handler.AddUserToTeam)
 	router.CoreRouter.HandlerFunc("PUT", "/api/team/plan/update/:id", handler.UpdateTeamPlan)
