@@ -139,15 +139,6 @@
                 rows="3"
             ></textarea>
 
-            <!-- Plan Select -->
-            <select
-                v-model="teamPlan"
-                class="w-full px-4 py-2 text-white rounded border border-gray-300 bg-black focus:outline-none font-semibold"
-            >
-                <option value="free">Free</option>
-                <option value="premium">Premium</option>
-            </select>
-
             <div class="flex gap-4 mt-4">
                 <button
                     @click="createTeam"
