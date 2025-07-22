@@ -134,8 +134,8 @@ function getTeamAvatarUrl(avatarUrl) {
         return null;
     }
 
-    const backendUrl = import.meta.env.backendUrl || "http://localhost:8000";
-    const staticUrl = backendUrl + "/static/";
+    const backendBaseUrl = import.meta.env.backendBaseUrl || "http://localhost:8000";
+    const staticUrl = backendBaseUrl + "/static/";
 
     return staticUrl + avatarUrl;
 }

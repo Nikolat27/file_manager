@@ -190,10 +190,10 @@ async function uploadAvatar() {
 
 async function getUserData() {
     axiosInstance.get("/api/user/get").then((resp) => {
-        const backendUrl =
-            import.meta.env.backendUrl || "http://localhost:8000";
+        const backendBaseUrl =
+            import.meta.env.backendBaseUrl || "http://localhost:8000";
 
-        const staticUrl = backendUrl + "/static/";
+        const staticUrl = backendBaseUrl + "/static/";
         let avatarUrl = staticUrl + resp.data.avatar_url;
         if (resp.data.avatarUrl) {
             avatarUrl = null;
