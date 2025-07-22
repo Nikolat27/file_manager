@@ -9,6 +9,8 @@ import ShortUrlsView from "../views/ShortUrls.vue";
 import GetFileView from "../views/GetFile.vue";
 import SentApprovals from "../views/SentApprovals.vue";
 import ReceivedApprovals from "../views/ReceivedApprovals.vue";
+import TeamsView from "../views/Teams.vue";
+import TeamFilesView from "../views/TeamFiles.vue";
 
 const routes = [
     { path: "/", redirect: "/home" },
@@ -54,6 +56,16 @@ const routes = [
         path: "/approvals/received",
         name: "ReceivedApprovals",
         component: ReceivedApprovals,
+    },
+    {
+        path: "/teams",
+        name: "teams",
+        component: TeamsView,
+    },
+    {
+        path: "/teams/:id",
+        name: "TeamFiles",
+        component: TeamFilesView,
     },
 ];
 

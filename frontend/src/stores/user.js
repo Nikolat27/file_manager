@@ -7,19 +7,22 @@ export const useUserStore = defineStore("user", {
         username: "",
         plan: "",
         token: "",
+        avatarUrl: "",
     }),
     actions: {
-        setUser({ id, username, plan, token }) {
+        setUser({ id, username, plan, token, avatarUrl }) {
             this.id = id;
             this.username = username;
             this.plan = plan;
             this.token = token;
+            this.avatarUrl = avatarUrl;
         },
         clearUser() {
             this.id = null;
             this.username = "";
             this.plan = "";
             this.token = "";
+            this.avatarUrl = "";
         },
     },
     persist: true,

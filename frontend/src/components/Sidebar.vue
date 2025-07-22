@@ -37,6 +37,7 @@
                 />
             </button>
             <span class="text-[13px]">Logout</span>
+            <span class="text-[13px] underline">{{ userStore.username }}</span>
         </div>
     </aside>
     <aside
@@ -89,6 +90,17 @@
             >
                 <span class="text-[14px] font-medium">Received Approvals</span>
             </div>
+            <div
+                @click="goToTeams"
+                :class="[
+                    'w-[196px] h-[36px] rounded-xl hover:cursor-pointer flex justify-start items-center pl-4',
+                    route.name === 'teams'
+                        ? 'bg-black text-white'
+                        : 'bg-[#f7f5f2] text-black hover:bg-[#ebe9e6]',
+                ]"
+            >
+                <span class="text-[14px] font-medium">Teams</span>
+            </div>
         </div>
     </aside>
 </template>
@@ -120,5 +132,9 @@ function goToSendApprovals() {
 
 function goToReceivedApprovals() {
     router.push({ name: "ReceivedApprovals" });
+}
+
+function goToTeams() {
+    router.push({ name: "teams" });
 }
 </script>

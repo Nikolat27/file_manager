@@ -14,7 +14,6 @@ const isAuthPage = computed(() => {
 
 const userStore = useUserStore();
 
-
 const publicPages = ["login", "register"];
 router.beforeEach((to, from, next) => {
     if (!userStore.token && !publicPages.includes(to.name)) {
