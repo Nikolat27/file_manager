@@ -1,8 +1,7 @@
 Run backend:
-    cd backend
-    make runserver (add the .env file first + go mod download)
-
+**cd backend**
+**make runserver** (create the .env file first + go mod download)
 
 Run frontend:
-   cd frontend
-   make runserver (add the .env file first + npm install)
+**cd frontend**
+**make runserver** (create the .env file first + npm install)
