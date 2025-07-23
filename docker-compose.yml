@@ -1,0 +1,35 @@
+services:
+    mongo:
+        image: mongo:7
+        ports:
+            - "27017:27017"
+        volumes:
+            - mongo_data:/data/db
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: root
+            MONGO_INITDB_ROOT_PASSWORD: example
+
+    backend:
+        build: ./backend
+        ports:
+            - "8000:8000"
+        depends_on:
+            - mongo
+        environment:
+            ALLOWED_CORS_ORIGINS: http://localhost:80,http://localhost
+            MONGO_URI: mongodb://root:example@mongo:27017
+            DATABASE_NAME: file_manager
+            PASETO_SYMMETRIC_KEY: "x@pej!w9t%g$zm7f^ka2r$n!dtvuhp*s"
+            PORT: 8000
+
+    frontend:
+        build: ./frontend
+        ports:
+            - "80:80"
+        depends_on:
+            - backend
+        environment:
+            VITE_BACKEND_BASE_URL: http://backend:8000
+
+volumes:
+    mongo_data:
