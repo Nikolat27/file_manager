@@ -6,14 +6,9 @@ import (
 	"file_manager/handlers"
 	"file_manager/webserver"
 	"fmt"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		panic(fmt.Errorf("ERROR loading environmental variables: %s", err))
-	}
-
 	db, err := database.New()
 	if err != nil {
 		panic(fmt.Errorf("ERROR initializing database client: %s", err))
