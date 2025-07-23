@@ -1,6 +1,7 @@
 package main
 
 import (
+	"file_manager/cronjobs"
 	"file_manager/database"
 	"file_manager/database/models"
 	"file_manager/handlers"
@@ -32,9 +33,13 @@ func main() {
 		}
 	}()
 
+	// background
+	go func() {
+		cronInstance := cronjobs.New()
+		cronInstance.Start(handler)
+	}()
+
 	if err := srv.Run(); err != nil {
 		panic(fmt.Errorf("ERROR running http server: %s", err))
 	}
 }
-
-

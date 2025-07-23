@@ -7,6 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/o1egl/paseto v1.0.0
+	github.com/robfig/cron/v3 v3.0.1
 	go.mongodb.org/mongo-driver v1.17.4
 )
 

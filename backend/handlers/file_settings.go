@@ -201,7 +201,7 @@ func (handler *Handler) DeleteFileSettings(w http.ResponseWriter, r *http.Reques
 		"_id": settingObjectId,
 	}
 
-	if err := handler.Models.FileSettings.Delete(filter); err != nil {
+	if _, err := handler.Models.FileSettings.Delete(filter); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}

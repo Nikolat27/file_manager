@@ -185,7 +185,11 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := handler.Models.File.Delete(fileObjectId); err != nil {
+	filter = bson.M{
+		"_id": fileObjectId,
+	}
+
+	if _, err := handler.Models.File.Delete(filter); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -194,7 +198,7 @@ func (handler *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 		"file_id": fileObjectId,
 	}
 
-	if err := handler.Models.FileSettings.Delete(filter); err != nil {
+	if _, err := handler.Models.FileSettings.Delete(filter); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
