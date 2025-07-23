@@ -2,7 +2,7 @@ Install Dependencies
 npm install
 
 .env file:
-backendBaseUrl=<your backend>
+VITE_BACKEND_BASE_URL=<your backend>
 
 example:
-backendBaseUrl=http://localhost:8000
+VITE_BACKEND_BASE_URL=http://localhost:8000
