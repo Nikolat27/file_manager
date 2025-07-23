@@ -1,4 +1,5 @@
-FROM node:lts-alpine
+# 1
+FROM node:lts-alpine AS builder
 
 RUN npm install -g http-server
 
@@ -12,6 +13,13 @@ COPY . .
 
 RUN npm run build
 
-EXPOSE 5000
+# 2
+FROM nginx:alpine
 
-CMD ["http-server", "dist"]
+RUN rm -rf /usr/share/nginx/html*
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
