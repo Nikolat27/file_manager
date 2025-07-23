@@ -77,24 +77,16 @@ func (file *FileModel) GetAll(filter bson.M, page, pageSize int64) ([]File, erro
 	return files, nil
 }
 
-func (file *FileModel) Delete(id primitive.ObjectID) error {
+func (file *FileModel) Delete(filter bson.M) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	filter := bson.M{
-		"_id": id,
-	}
-
-	deletedCount, err := file.db.Collection("files").DeleteOne(ctx, filter)
+	result, err := file.db.Collection("files").DeleteOne(ctx, filter)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
-	if deletedCount.DeletedCount == 0 {
-		return errors.New("file with this id does not exist")
-	}
-
-	return nil
+	return result.DeletedCount, nil
 }
 
 func (file *FileModel) Update(id primitive.ObjectID, updates bson.M) error {

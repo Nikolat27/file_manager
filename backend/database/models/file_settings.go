@@ -92,15 +92,16 @@ func (file *FileSettingModel) GetAll(filter bson.M) ([]FileSettings, error) {
 	return settings, nil
 }
 
-func (file *FileSettingModel) Delete(filter bson.M) error {
+func (file *FileSettingModel) Delete(filter bson.M) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if _, err := file.db.Collection("file_settings").DeleteOne(ctx, filter); err != nil {
-		return err
+	result, err := file.db.Collection("file_settings").DeleteOne(ctx, filter)
+	if err != nil {
+		return 0, err
 	}
 
-	return nil
+	return result.DeletedCount, nil
 }
 
 func (file *FileSettingModel) Update(id primitive.ObjectID, updates bson.M) error {
@@ -110,7 +111,7 @@ func (file *FileSettingModel) Update(id primitive.ObjectID, updates bson.M) erro
 	update := bson.M{
 		"$set": updates,
 	}
-	
+
 	result, err := file.db.Collection(FileSettingsCollectionName).UpdateByID(ctx, id, update)
 	if err != nil {
 		return err
