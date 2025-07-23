@@ -67,10 +67,10 @@ async function login() {
             headers: headers,
         })
         .then((resp) => {
-            const backendBaseUrl =
-                import.meta.env.backendBaseUrl || "http://localhost:8000";
+            const VITE_BACKEND_BASE_URL =
+                import.meta.env.VITE_BACKEND_BASE_URL || "http://localhost:8000";
 
-            const staticUrl = backendBaseUrl + "/static/";
+            const staticUrl = VITE_BACKEND_BASE_URL + "/static/";
             let avatarUrl = staticUrl + resp.data.avatar_url;
 
             if (!resp.data.avatar_url) {

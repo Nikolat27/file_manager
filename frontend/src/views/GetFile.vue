@@ -289,9 +289,9 @@ function parseError(err) {
 }
 
 function showFile(data) {
-    const backendBaseUrl =
-        import.meta.env.backendBaseUrl || "http://localhost:8000";
-    const staticUrl = backendBaseUrl + "/static/";
+    const VITE_BACKEND_BASE_URL =
+        import.meta.env.VITE_BACKEND_BASE_URL || "http://localhost:8000";
+    const staticUrl = VITE_BACKEND_BASE_URL + "/static/";
 
     fileUrl.value = staticUrl + data.file_address;
     fileName.value = data.file_address.split("/").pop() || "file";
